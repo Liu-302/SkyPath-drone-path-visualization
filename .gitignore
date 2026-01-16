@@ -1,0 +1,19 @@
+.DS_Store
+.cache
+
+/dist
+
+# dependencies
+/node_modules
+/coverage
+pnpm-lock.yaml
+yarn-error.log
+
+# fes
+/src/.fes
+/src/.fes-production
+/src/.fes-test
+.env.local
+
+# vscode
+.vscode/
