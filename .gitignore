@@ -1,19 +1,88 @@
+# System
 .DS_Store
-.cache
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-/dist
+# Frontend - Node
+frontend/node_modules/
+frontend/dist/
+frontend/.fes/
+frontend/.fes-production/
+frontend/.fes-test/
+frontend/.env.local
+frontend/pnpm-lock.yaml
+frontend/yarn-error.log
 
-# dependencies
-/node_modules
-/coverage
-pnpm-lock.yaml
-yarn-error.log
+# Frontend - FesJS
+/src/.fes/
+/src/.fes-production/
+/src/.fes-test/
 
-# fes
-/src/.fes
-/src/.fes-production
-/src/.fes-test
+# Backend - Java/Maven
+backend/target/
+backend/.mvn/
+backend/mvnw
+backend/mvnw.cmd
+backend/.mvn/wrapper/
+backend/*.jar
+backend/*.war
+backend/*.ear
+backend/*.class
+backend/.classpath
+backend/.project
+backend/.settings/
+backend/.idea/
+backend/*.iml
+backend/.vscode/
+backend/logs/
+
+# Environment
+.env
 .env.local
+.env.prod
+.env.*.local
 
-# vscode
+# IDE - VSCode
 .vscode/
+*.code-workspace
+
+# IDE - IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# IDE - Eclipse
+.classpath
+.project
+.settings/
+
+# Coverage
+/coverage
+*.lcov
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Root level dependencies (should not exist, but just in case)
+node_modules/
+.cache/
+
+# Temporary files
+*.swp
+*.swo
+*.tmp
+*~
+
+# Build artifacts
+dist/
+build/
+out/

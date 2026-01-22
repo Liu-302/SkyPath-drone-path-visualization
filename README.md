@@ -1,84 +1,275 @@
-# SkyPath
+# SkyPath 3D Visualization Project
 
-一个基于 Vue 3 + TresJS + Three.js + Fes 的 3D 可视化项目。参考 TvT.js 的工程架构思路,实现了无人机轨迹可视化与建筑模型加载功能:
+A full-stack 3D visualization application for drone path planning and building inspection.
 
-- 使用 Fes 框架的运行时扩展模式(`src/app.jsx`)组织首屏与路由
-- 使用 TresJS 的声明式组件范式编写三维场景(`<TresCanvas>`)
-- 使用 three-stdlib 工具链(`OBJLoader`)加载建筑模型
-- 使用 TresJS 生态组件库 Cientos(`OrbitControls`)实现相机控制
-- 使用 Vite 的公共资源组织方式(静态资源放在 `public/`,原样拷贝)
+## 📋 Table of Contents
 
-## 特性
+- [Overview](#overview)
+- [Tech Stack](#tech-stack)
+- [Features](#features)
+- [Project Structure](#project-structure)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Documentation](#documentation)
+- [Development](#development)
+- [Deployment](#deployment)
+- [Contributing](#contributing)
+- [License](#license)
 
-- 参考 TvT.js 的工程架构,开发体验一致
-- 现代技术栈:Vue 3 + TresJS(声明式 Three) + Fes(工程与运行时)
-- 支持无人机轨迹上传与可视化
-- 支持建筑模型(OBJ 格式)加载与显示
-- 提供航点交互与相机视锥体可视化
-- 内置 KPI 指标计算(路径长度、覆盖率、能耗等)
+## 🎯 Overview
 
-## 技术栈
+SkyPath is an interactive 3D web application designed for drone flight path planning and building inspection. It enables users to:
 
-### 核心框架
-- **Vue 3.5.21** - 现代前端框架,Composition API
-- **TypeScript 5.9.2** - 类型安全的 JavaScript 超集
+- Upload and visualize 3D building models (OBJ format)
+- Create and edit drone flight paths with waypoints
+- Real-time KPI calculation (coverage, overlap, energy, collision detection)
+- Visualize camera viewpoints and frustums
+- Undo/Redo functionality for path editing
 
-### 3D 渲染引擎
-- **Three.js 0.160.0** - WebGL 3D 图形库
-- **TresJS 5.1.0** - Vue 3 的声明式 Three.js 组件
-- **@tresjs/cientos 5.1.0** - TresJS 生态组件库
+## 🛠 Tech Stack
 
-### 状态管理与路由
-- **Pinia 3.0.4** - Vue 3 状态管理库
-- **Vue Router 4** - Vue 官方路由管理器(由 Fes 集成)
+### Frontend
+- **Framework**: Vue 3 with Composition API
+- **3D Engine**: Three.js + TresJS
+- **State Management**: Pinia
+- **Build Tool**: Vite (via FesJS)
+- **Styling**: SCSS
+- **TypeScript**: Full type safety
 
-### 工具库
-- **three-stdlib 2.36.0** - Three.js 标准工具库(OBJLoader 等)
+### Backend
+- **Framework**: Spring Boot 3.2.0
+- **Language**: Java 17
+- **Database**: MongoDB
+- **ORM**: Spring Data MongoDB
+- **Build Tool**: Maven
 
-### 样式与构建
-- **Sass 1.49.11** - CSS 预处理器
-- **Fes 3.1.17** - 基于 Vite 的前端工程化框架,提供开发、构建、路由、状态管理等完整解决方案
+## ✨ Features
 
+### Core Features
+- **3D Visualization**: Interactive 3D building models with drone path visualization
+- **Path Planning**: Create and edit drone flight paths with waypoints
+- **Real-time KPI Calculation**: Instant feedback on path modifications
+  - Coverage percentage
+  - Overlap detection
+  - Energy consumption estimation
+  - Collision detection
+- **Camera Views**: Visualize camera frustums and viewpoints
+- **Undo/Redo**: Full history support with keyboard shortcuts (Ctrl+Z, Ctrl+Y)
 
-## 快速开始
+### User Experience
+- Drag and drop file upload
+- Particle loading animation
+- Intuitive 3D camera controls
+- Responsive design
+- Real-time validation with English error messages
 
-环境要求:
-- Node >= 18.18
-- Yarn 1.22.x(建议 1.22.22)
+## 📁 Project Structure
 
-使用步骤:
+```
+grp-skypath/
+├── frontend/                      # Vue.js frontend application
+│   ├── src/
+│   │   ├── features/             # Feature modules
+│   │   │   ├── kpi/           # KPI calculation and display
+│   │   │   ├── upload/         # File upload and model loading
+│   │   │   ├── visualization/  # 3D visualization
+│   │   │   └── shared/        # Shared components
+│   │   ├── pages/              # Page components
+│   │   ├── stores/             # Pinia stores
+│   │   ├── shared/             # Global utilities and constants
+│   │   └── styles/            # Global styles
+│   ├── public/                 # Static assets
+│   ├── package.json           # Dependencies
+│   ├── tsconfig.json         # TypeScript config
+│   └── README.md            # Frontend documentation
+│
+├── backend/                       # Spring Boot backend application
+│   ├── src/main/java/com/skypath/backend/
+│   │   ├── config/            # Configuration (CORS, MongoDB)
+│   │   ├── controller/        # REST API controllers
+│   │   ├── service/           # Business logic
+│   │   ├── repository/        # Data access layer
+│   │   ├── entity/            # MongoDB entities
+│   │   └── dto/              # Data transfer objects
+│   ├── src/main/resources/
+│   │   └── application.properties  # App configuration
+│   ├── pom.xml              # Maven configuration
+│   ├── README.md            # Backend documentation
+│   └── API_EXAMPLES.md      # API usage examples
+│
+├── .gitignore
+├── .editorconfig
+├── LICENSE
+├── README.md               # This file
+├── 项目结构说明.md          # Chinese structure documentation
+└── 默认数据配置表.md        # Data configuration reference
+```
+
+## 📋 Prerequisites
+
+### Frontend
+- **Node.js**: 18+
+- **Package Manager**: Yarn (recommended) or npm
+- **Browser**: Chrome, Firefox, Safari, or Edge (latest version)
+
+### Backend
+- **Java**: 17+
+- **Maven**: 3.6+
+- **MongoDB**: 5.0+
+
+## 🚀 Quick Start
+
+### 方式 1：使用本地 Docker MongoDB（开发推荐）
+
+#### 1. 启动 MongoDB
+
 ```bash
-# 1) 安装依赖
+# Windows
+start-mongodb.bat
+
+# macOS/Linux
+chmod +x start-mongodb.sh
+./start-mongodb.sh
+
+# 或直接使用 Docker Compose
+docker-compose up -d
+```
+
+MongoDB 将在 `localhost:27017` 运行
+
+#### 2. 启动后端
+
+```bash
+cd backend
+mvn spring-boot:run
+```
+
+后端将在 `http://localhost:8080` 运行
+
+#### 3. 启动前端
+
+```bash
+cd frontend
+
+# Install dependencies (first time only)
 yarn install
 
-# 2) 本地开发
+# Start development server
 yarn dev
-# 控制台会输出访问地址,例如:http://localhost:8000/
+```
 
-# 3) 构建生产版本
+前端将在 `http://localhost:5173` 运行
+
+### 方式 2：使用 MongoDB Atlas（生产环境）
+
+1. 按照 [MongoDB Atlas 设置指南](./MONGODB_ATLAS_SETUP.md) 设置 MongoDB Atlas
+2. 创建 `.env.prod` 文件并配置连接字符串
+3. 启动后端：
+```bash
+cd backend
+set SPRING_PROFILES_ACTIVE=prod
+set MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/skypath
+mvn spring-boot:run
+```
+
+详细设置步骤请参考：[MongoDB Atlas 设置指南](./MONGODB_ATLAS_SETUP.md)
+
+## 📚 Documentation
+
+- **[Frontend Documentation](./frontend/README.md)** - Detailed frontend architecture and development guide
+- **[Backend Documentation](./backend/README.md)** - Backend API reference and architecture
+- **[API Examples](./backend/API_EXAMPLES.md)** - Example API calls and responses
+- **[项目结构说明.md](./项目结构说明.md)** - Chinese project structure documentation
+- **[默认数据配置表.md](./默认数据配置表.md)** - Data configuration reference
+
+## 💻 Development
+
+### Frontend Development
+
+```bash
+cd frontend
+yarn dev
+```
+
+The development server runs at `http://localhost:5173` with hot reload enabled.
+
+#### Key Files to Edit
+- `src/pages/Visualize.vue` - Main visualization page
+- `src/features/kpi/` - KPI calculation and display
+- `src/features/visualization/` - 3D rendering components
+- `src/stores/` - Pinia state management
+
+### Backend Development
+
+```bash
+cd backend
+mvn spring-boot:run
+```
+
+The backend runs at `http://localhost:8080`.
+
+#### Key Files to Edit
+- `src/main/java/com/skypath/backend/controller/` - Add new API endpoints
+- `src/main/java/com/skypath/backend/service/` - Implement business logic
+- `src/main/java/com/skypath/backend/repository/` - Add data access methods
+- `src/main/resources/application.properties` - Configure MongoDB and CORS
+
+## 📦 Deployment
+
+### Frontend Deployment
+
+```bash
+cd frontend
 yarn build
 ```
 
-## 功能说明
+The static files will be built in the `dist/` directory. Deploy to any static web server (Nginx, Apache, Vercel, etc.).
 
-### 数据上传
-- 支持上传建筑模型文件(OBJ 格式)
-- 支持上传无人机轨迹文件(CSV 格式)
+### Backend Deployment
 
-### 可视化功能
-- 3D 场景中渲染建筑模型
-- 路径点与路径线段可视化
-- 支持路径点点击交互
-- 相机视锥体可视化
-- 航点视角切换
+```bash
+cd backend
+mvn clean package
+java -jar target/backend-1.0.0.jar
+```
 
-### KPI 指标
-- 路径长度计算
-- 覆盖率分析
-- 重叠率检测
-- 能耗估算
-- 碰撞检测
+For production deployment, consider:
+- Using a reverse proxy (Nginx)
+- Enabling HTTPS
+- Setting up process management (systemd, PM2)
+- Configuring MongoDB replica sets for high availability
 
-## 许可证
+## 🤝 Contributing
 
-本项目基于 Apache 2.0 协议开源。
+Contributions are welcome! Please follow these guidelines:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Code Style
+- Frontend: Follow Vue 3 Style Guide
+- Backend: Follow Spring Boot conventions
+- Use meaningful commit messages
+- Write tests for new features
+
+## 📄 License
+
+This project is licensed under the terms of the [LICENSE](LICENSE) file.
+
+## 🙏 Acknowledgments
+
+- **Three.js** - 3D rendering engine
+- **Vue.js** - Progressive JavaScript framework
+- **Spring Boot** - Java application framework
+- **MongoDB** - NoSQL database
+
+## 📧 Contact
+
+For questions or support, please open an issue on GitHub.
+
+---
+
+**Happy Coding! 🚀**
