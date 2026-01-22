@@ -2,7 +2,7 @@
 
 A full-stack 3D visualization application for drone path planning and building inspection.
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Tech Stack](#tech-stack)
@@ -16,7 +16,7 @@ A full-stack 3D visualization application for drone path planning and building i
 - [Contributing](#contributing)
 - [License](#license)
 
-## 🎯 Overview
+## Overview
 
 SkyPath is an interactive 3D web application designed for drone flight path planning and building inspection. It enables users to:
 
@@ -63,7 +63,7 @@ SkyPath is an interactive 3D web application designed for drone flight path plan
 - Responsive design
 - Real-time validation with English error messages
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 grp-skypath/
@@ -105,7 +105,7 @@ grp-skypath/
 └── 默认数据配置表.md        # Data configuration reference
 ```
 
-## 📋 Prerequisites
+## Prerequisites
 
 ### Frontend
 - **Node.js**: 18+
@@ -117,7 +117,7 @@ grp-skypath/
 - **Maven**: 3.6+
 - **MongoDB**: 5.0+
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 方式 1：使用本地 Docker MongoDB（开发推荐）
 
@@ -158,7 +158,7 @@ yarn install
 yarn dev
 ```
 
-前端将在 `http://localhost:5173` 运行
+前端将在 `http://localhost:8000` 运行
 
 ### 方式 2：使用 MongoDB Atlas（生产环境）
 
@@ -174,7 +174,7 @@ mvn spring-boot:run
 
 详细设置步骤请参考：[MongoDB Atlas 设置指南](./MONGODB_ATLAS_SETUP.md)
 
-## 📚 Documentation
+## Documentation
 
 - **[Frontend Documentation](./frontend/README.md)** - Detailed frontend architecture and development guide
 - **[Backend Documentation](./backend/README.md)** - Backend API reference and architecture
@@ -182,7 +182,7 @@ mvn spring-boot:run
 - **[项目结构说明.md](./项目结构说明.md)** - Chinese project structure documentation
 - **[默认数据配置表.md](./默认数据配置表.md)** - Data configuration reference
 
-## 💻 Development
+## Development
 
 ### Frontend Development
 
@@ -191,7 +191,7 @@ cd frontend
 yarn dev
 ```
 
-The development server runs at `http://localhost:5173` with hot reload enabled.
+The development server runs at `http://localhost:8000` with hot reload enabled.
 
 #### Key Files to Edit
 - `src/pages/Visualize.vue` - Main visualization page
@@ -214,7 +214,7 @@ The backend runs at `http://localhost:8080`.
 - `src/main/java/com/skypath/backend/repository/` - Add data access methods
 - `src/main/resources/application.properties` - Configure MongoDB and CORS
 
-## 📦 Deployment
+## Deployment
 
 ### Frontend Deployment
 
@@ -239,7 +239,7 @@ For production deployment, consider:
 - Setting up process management (systemd, PM2)
 - Configuring MongoDB replica sets for high availability
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please follow these guidelines:
 
@@ -255,21 +255,19 @@ Contributions are welcome! Please follow these guidelines:
 - Use meaningful commit messages
 - Write tests for new features
 
-## 📄 License
+## License
 
 This project is licensed under the terms of the [LICENSE](LICENSE) file.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **Three.js** - 3D rendering engine
 - **Vue.js** - Progressive JavaScript framework
 - **Spring Boot** - Java application framework
 - **MongoDB** - NoSQL database
 
-## 📧 Contact
+## Contact
 
 For questions or support, please open an issue on GitHub.
 
 ---
-
-**Happy Coding! 🚀**

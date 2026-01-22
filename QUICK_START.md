@@ -1,11 +1,11 @@
-# 🚀 快速开始指南
+# 快速开始指南
 
 ## 前置要求
 
-- ✅ Java 17+
-- ✅ Maven 3.6+
-- ✅ Node.js 18+
-- ✅ Docker Desktop（已安装）
+- Java 17+
+- Maven 3.6+
+- Node.js 18+
+- Docker Desktop（已安装）
 
 ## 第一步：启动 Docker Desktop
 
@@ -63,12 +63,12 @@ yarn install
 yarn dev
 ```
 
-前端将在 `http://localhost:5173` 启动
+前端将在 `http://localhost:8000` 启动
 
 ## 完成！
 
 现在你可以：
-1. 打开浏览器访问 `http://localhost:5173`
+1. 打开浏览器访问 `http://localhost:8000`
 2. 上传 OBJ 文件
 3. 开始使用！
 
@@ -147,10 +147,10 @@ lsof -i :27017  # macOS/Linux
 **解决**：
 1. 确保后端正在运行（`http://localhost:8080`）
 2. 检查 `application.properties` 中的 CORS 配置
-3. 确保前端访问的是 `http://localhost:5173`
+3. 确保前端访问的是 `http://localhost:8000`
 
 ## 下一步
 
-- 📖 查看 [MongoDB Atlas 设置指南](./MONGODB_ATLAS_SETUP.md)（生产环境）
-- 📖 查看 [项目结构说明](./项目结构说明.md)
-- 📖 查看 [API 示例](./backend/API_EXAMPLES.md)
+- 查看 [MongoDB Atlas 设置指南](./MONGODB_ATLAS_SETUP.md)（生产环境）
+- 查看 [项目结构说明](./项目结构说明.md)
+- 查看 [API 示例](./backend/API_EXAMPLES.md)
