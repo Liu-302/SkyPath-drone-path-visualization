@@ -82,6 +82,7 @@ hs_err_pid*.log
 *.hprof
 
 # Root level
+/src/
 package-lock.json
 node_modules/
 .cache/
