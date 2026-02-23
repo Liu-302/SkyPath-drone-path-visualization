@@ -1,32 +1,52 @@
 <template>
   <div class="panel-header">
-    <div class="control-buttons">
-      <button class="control-btn" @click="$emit('play')" :disabled="disabled">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <path d="M4 2L15 9L4 16V2Z" fill="currentColor"/>
-        </svg>
-      </button>
-      <button class="control-btn" @click="$emit('pause')" :disabled="disabled">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <rect x="4" y="3" width="4" height="12" fill="currentColor"/>
-          <rect x="10" y="3" width="4" height="12" fill="currentColor"/>
-        </svg>
-      </button>
-      <button class="control-btn" @click="$emit('stop')" :disabled="disabled">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <rect x="4" y="4" width="10" height="10" fill="currentColor"/>
-        </svg>
-      </button>
+    <div class="control-row">
+      <div class="control-buttons">
+        <button
+          class="control-btn"
+          :title="showPlayIcon ? 'Play' : 'Pause'"
+          :aria-label="showPlayIcon ? 'Play' : 'Pause'"
+          :disabled="disabled"
+          @click="showPlayIcon ? $emit('play') : $emit('pause')"
+        >
+          <svg v-if="showPlayIcon" width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <path d="M4 2L15 9L4 16V2Z" fill="currentColor"/>
+          </svg>
+          <svg v-else width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <rect x="4" y="3" width="4" height="12" fill="currentColor"/>
+            <rect x="10" y="3" width="4" height="12" fill="currentColor"/>
+          </svg>
+        </button>
+        <button class="control-btn" @click="$emit('stop')" :disabled="disabled" title="Stop" aria-label="Stop">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <rect x="4" y="4" width="10" height="10" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+      <span v-if="isInPlaybackMode" class="status-label">
+        {{ isPaused ? 'Paused' : 'Playing' }}
+      </span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+
 interface Props {
   disabled?: boolean
+  /** 是否处于播放模式（已点击过 Play） */
+  isInPlaybackMode?: boolean
+  /** 是否暂停中（true=暂停，false=正在播放） */
+  isPaused?: boolean
 }
 
-defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  isInPlaybackMode: false,
+  isPaused: true,
+})
+
+const showPlayIcon = computed(() => !props.isInPlaybackMode || props.isPaused)
 
 defineEmits<{
   play: []
@@ -46,10 +66,27 @@ defineEmits<{
   background: var(--gradient-cold-1);
 }
 
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .control-buttons {
   display: flex;
   gap: 40px;
   align-items: center;
+}
+
+.status-label {
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.control-row .status-label {
+  padding-left: 8px;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .control-btn {

@@ -12,7 +12,7 @@ export {
     createRouter,
     Plugin,
     ApplyPluginsType
-} from 'D:/GRP_program/grp-skypath/frontend/node_modules/@fesjs/runtime';
+} from 'C:/Users/34175/grp-skypath/node_modules/@fesjs/runtime';
 
 export { plugin } from '../core/plugin.js';
 export { getRouter, getHistory, destroyRouter, defineRouteMeta } from '../core/routes/routeExports.js';

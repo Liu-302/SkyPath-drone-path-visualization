@@ -4,7 +4,7 @@ import {
 } from 'vue';
 import { plugin } from './core/plugin';
 import './core/pluginRegister';
-import { ApplyPluginsType } from 'D:/GRP_program/grp-skypath/frontend/node_modules/@fesjs/runtime';
+import { ApplyPluginsType } from 'C:/Users/34175/grp-skypath/node_modules/@fesjs/runtime';
 import { getRoutes } from './core/routes/routes';
 import DefaultContainer from './defaultContainer.vue';
 

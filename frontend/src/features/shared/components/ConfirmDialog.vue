@@ -7,11 +7,11 @@
             <p class="confirm-message">{{ message }}</p>
           </div>
           <div class="confirm-dialog-actions">
-            <button class="confirm-btn cancel-btn" @click="handleCancel">
-              Cancel
+            <button v-if="showCancel" class="confirm-btn cancel-btn" @click="handleCancel">
+              {{ cancelLabel }}
             </button>
             <button class="confirm-btn confirm-btn-primary" @click="handleConfirm">
-              Confirm
+              {{ confirmLabel }}
             </button>
           </div>
         </div>
@@ -25,7 +25,19 @@
 interface Props {
   visible: boolean
   message: string
+  /** When false, only show OK button (alert mode) */
+  showCancel?: boolean
+  /** Label for the cancel button */
+  cancelLabel?: string
+  /** Label for the primary button */
+  confirmLabel?: string
 }
+
+withDefaults(defineProps<Props>(), {
+  showCancel: true,
+  cancelLabel: 'Cancel',
+  confirmLabel: 'Confirm'
+})
 
 interface Emits {
   (e: 'confirm'): void
@@ -33,7 +45,6 @@ interface Emits {
   (e: 'update:visible', value: boolean): void
 }
 
-const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 function handleConfirm() {

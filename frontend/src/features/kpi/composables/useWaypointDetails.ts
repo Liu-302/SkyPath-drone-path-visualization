@@ -16,10 +16,17 @@ interface WaypointDetailsOptions {
 const viewpointCache = new Map<string, any>()
 
 /**
- * 生成缓存键
+ * 生成缓存键（含 position 与 normal，以便 Pitch/Yaw 变更或撤销/重做后正确刷新）
  */
-function getCacheKey(index: number, position: { x: number; y: number; z: number }): string {
-  return `${index}-${Math.round(position.x)}-${Math.round(position.y)}-${Math.round(position.z)}`
+function getCacheKey(
+  index: number,
+  point: { x: number; y: number; z: number; normal?: { x: number; y: number; z: number } }
+): string {
+  const n = point.normal
+  const nx = n ? Math.round(n.x * 1000) : 0
+  const ny = n ? Math.round(n.y * 1000) : 0
+  const nz = n ? Math.round(n.z * 1000) : 0
+  return `${index}-${Math.round(point.x)}-${Math.round(point.y)}-${Math.round(point.z)}-${nx}-${ny}-${nz}`
 }
 
 /**
@@ -32,7 +39,16 @@ export function useWaypointDetails(
 ) {
   const getPoints = () => parsedPoints() || []
 
-  // 监听路径点变化，清空相关缓存
+  // 路径变化时（如路径优化）清空缓存，确保每个航点的 KPI 重新计算
+  watch(
+    () => parsedPoints(),
+    () => {
+      viewpointCache.clear()
+    },
+    { flush: 'sync' }
+  )
+
+  // 监听当前航点的 position+normal 变化，清空相关缓存（使 Pitch/Yaw 撤销/重做后正确刷新）
   watch(
     () => {
       const index = selectedIndex.value
@@ -40,13 +56,10 @@ export function useWaypointDetails(
       const points = getPoints()
       if (index >= points.length) return null
       const point = points[index]
-      return `${index}-${Math.round(point.x)}-${Math.round(point.y)}-${Math.round(point.z)}`
+      return getCacheKey(index, point)
     },
-    (newKey) => {
-      if (newKey) {
-        // 当坐标变化时，清空旧缓存
-        viewpointCache.clear()
-      }
+    () => {
+      viewpointCache.clear()
     }
   )
 

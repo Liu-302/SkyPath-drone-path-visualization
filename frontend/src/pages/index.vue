@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { useRouter } from '@fesjs/fes'
+import { onMounted } from 'vue'
 
-// 自动跳转到 /upload
+// 自动跳转到 /Home（登录后）或 /Login（未登录时由路由守卫处理）
 const router = useRouter()
-router.replace('/upload')
+onMounted(() => {
+    router.replace('/Home')
+})
 </script>
 
 <template>

@@ -2,7 +2,7 @@
   <div class="calculation-status" v-if="visible">
     <div class="error">
       <span class="error-message">{{ message }}</span>
-      <button @click="$emit('retry')" class="retry-btn">重试</button>
+      <button @click="$emit('retry')" class="retry-btn">Retry</button>
     </div>
   </div>
 </template>

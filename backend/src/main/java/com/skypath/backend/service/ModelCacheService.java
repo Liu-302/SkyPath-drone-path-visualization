@@ -25,7 +25,7 @@ public class ModelCacheService {
     public void cacheModel(String projectId, MeshData meshData) {
         if (meshData != null && (meshData.getVertices() != null && !meshData.getVertices().isEmpty())) {
             modelCache.put(projectId, meshData);
-            log.debug("模型数据已缓存: projectId={}, 顶点数={}", projectId, 
+            log.debug("Model data cached: projectId={}, vertexCount={}", projectId, 
                 meshData.getVertices() != null ? meshData.getVertices().size() / 3 : 0);
         }
     }
@@ -38,7 +38,7 @@ public class ModelCacheService {
     public MeshData getCachedModel(String projectId) {
         MeshData cached = modelCache.get(projectId);
         if (cached != null) {
-            log.debug("使用缓存的模型数据: projectId={}", projectId);
+            log.debug("Using cached model data: projectId={}", projectId);
         }
         return cached;
     }
@@ -49,7 +49,7 @@ public class ModelCacheService {
      */
     public void clearCache(String projectId) {
         modelCache.remove(projectId);
-        log.debug("已清除模型缓存: projectId={}", projectId);
+        log.debug("Model cache cleared: projectId={}", projectId);
     }
 
     /**

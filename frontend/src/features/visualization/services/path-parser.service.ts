@@ -45,8 +45,7 @@ export function usePathParser() {
       }
 
       if (points.length === 0) {
-        console.warn(`[路径解析] 无法解析路径数据，格式不符合要求`)
-        return
+        throw new Error('Unable to parse path data: file format not supported. Expected an array of points with x, y, z coordinates.')
       }
 
       // 标准化路径点数据
@@ -81,10 +80,15 @@ export function usePathParser() {
       })
 
       store.setParsedPoints(standardizedPoints)
-      console.log(`[路径解析] ${file.name} → ${standardizedPoints.length} 个点`)
     } catch (error) {
-      console.error(`[路径解析] 失败:`, error)
-      throw error
+      const msg = error instanceof Error ? error.message : String(error)
+      if (msg.startsWith('Unable to parse') || msg.startsWith('Invalid JSON')) {
+        throw error
+      }
+      if (msg.includes('JSON') || msg.includes('parse') || msg.includes('Unexpected')) {
+        throw new Error('Invalid JSON format. Please check the path file.')
+      }
+      throw new Error(`Failed to parse path file: ${msg}`)
     }
   }
 

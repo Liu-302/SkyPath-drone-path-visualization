@@ -10,30 +10,18 @@ export function useKpiPlayback() {
   const handlePlay = () => {
     isPlaying.value = true
     isPaused.value = false
-    console.log('play')
   }
 
   const handlePause = () => {
     isPaused.value = !isPaused.value
-    console.log(isPaused.value ? 'pause' : 'resume')
   }
 
   const handleStop = () => {
     isPlaying.value = false
     isPaused.value = false
-    console.log('stop')
   }
 
   const viewCoverage = () => {
-    console.log('coverage')
-  }
-
-  const viewOverlap = () => {
-    console.log('overlap')
-  }
-
-  const viewSafety = () => {
-    console.log('safety')
   }
 
   return {
@@ -43,8 +31,6 @@ export function useKpiPlayback() {
     handlePause,
     handleStop,
     viewCoverage,
-    viewOverlap,
-    viewSafety,
   }
 }
 

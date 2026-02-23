@@ -6,15 +6,19 @@ import com.skypath.backend.dto.MeshData;
 import com.skypath.backend.entity.Project;
 import com.skypath.backend.entity.Waypoint;
 import com.skypath.backend.entity.ModelData;
+import com.skypath.backend.entity.ModelDataChunk;
 import com.skypath.backend.repository.ProjectRepository;
 import com.skypath.backend.repository.WaypointRepository;
 import com.skypath.backend.repository.ModelDataRepository;
+import com.skypath.backend.repository.ModelDataChunkRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -27,8 +31,10 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final WaypointRepository waypointRepository;
     private final ModelDataRepository modelDataRepository;
+    private final ModelDataChunkRepository modelDataChunkRepository;
     private final KPICalculatorService kpiCalculatorService;
     private final ModelCacheService modelCacheService;
+    private final CoverageCalculatorService coverageCalculatorService;
 
     public List<Project> getAllProjects(String userId) {
         return projectRepository.findByUserIdOrderByUpdatedAtDesc(userId);
@@ -58,8 +64,16 @@ public class ProjectService {
         // Delete associated waypoints and model data first
         waypointRepository.deleteByProjectId(id);
         modelDataRepository.deleteByProjectId(id);
+        modelDataChunkRepository.deleteByProjectId(id);
         modelCacheService.clearCache(id); // 清除内存缓存
         projectRepository.deleteById(id);
+    }
+
+    /**
+     * Get waypoints for a project
+     */
+    public List<Waypoint> getWaypoints(String projectId) {
+        return waypointRepository.findByProjectIdOrderBySequenceOrder(projectId);
     }
 
     /**
@@ -88,47 +102,106 @@ public class ProjectService {
         return waypointRepository.findByProjectIdOrderBySequenceOrder(projectId);
     }
 
+    /** 单块顶点数量上限（9 万 double = 3 万顶点 ≈ 720KB），避免超过 MongoDB 16MB 限制 */
+    private static final int VERTEX_CHUNK_SIZE = 90_000;
+    /** 单块索引数量上限（12 万 int = 4 万三角形 ≈ 480KB） */
+    private static final int INDEX_CHUNK_SIZE = 120_000;
+
     /**
      * Save model data for a project
-     * 保存建筑模型数据到数据库
+     * 分块存储，规避 MongoDB 单文档 16MB 限制
      */
     public ModelData saveModelData(String projectId, MeshData meshData, String originalFileName) {
-        // 删除现有的模型数据
         modelDataRepository.deleteByProjectId(projectId);
-        
-        // 创建新的模型数据实体
-        ModelData modelData = new ModelData(projectId, meshData.getVertices(), 
-                meshData.getIndices(), originalFileName);
-        
-        // 保存到数据库
-        ModelData saved = modelDataRepository.save(modelData);
-        
-        // 同时更新内存缓存
+        modelDataChunkRepository.deleteByProjectId(projectId);
+
+        List<Double> vertices = meshData.getVertices();
+        List<Integer> indices = meshData.getIndices();
+        if (vertices == null || vertices.isEmpty()) {
+            throw new IllegalArgumentException("vertices cannot be empty");
+        }
+
+        List<ModelDataChunk> chunks = new ArrayList<>();
+        int chunkIndex = 0;
+
+        // 顶点分块（每块 VERTEX_CHUNK_SIZE 个 double，保证为 3 的倍数以保持顶点完整）
+        for (int i = 0; i < vertices.size(); i += VERTEX_CHUNK_SIZE) {
+            int end = Math.min(i + VERTEX_CHUNK_SIZE, vertices.size());
+            end = end - (end % 3);
+            if (i >= end) continue;
+            ModelDataChunk chunk = new ModelDataChunk();
+            chunk.setProjectId(projectId);
+            chunk.setChunkIndex(chunkIndex++);
+            chunk.setOriginalFileName(originalFileName);
+            chunk.setVertexChunk(new ArrayList<>(vertices.subList(i, end)));
+            chunk.setIndexChunk(null);
+            chunks.add(chunk);
+        }
+
+        // 索引分块
+        if (indices != null && !indices.isEmpty()) {
+            for (int i = 0; i < indices.size(); i += INDEX_CHUNK_SIZE) {
+                int end = Math.min(i + INDEX_CHUNK_SIZE, indices.size());
+                ModelDataChunk chunk = new ModelDataChunk();
+                chunk.setProjectId(projectId);
+                chunk.setChunkIndex(chunkIndex++);
+                chunk.setOriginalFileName(originalFileName);
+                chunk.setVertexChunk(null);
+                chunk.setIndexChunk(new ArrayList<>(indices.subList(i, end)));
+                chunks.add(chunk);
+            }
+        }
+
+        int totalChunks = chunks.size();
+        for (ModelDataChunk c : chunks) {
+            c.setTotalChunks(totalChunks);
+        }
+        modelDataChunkRepository.saveAll(chunks);
+
         modelCacheService.cacheModel(projectId, meshData);
-        
-        return saved;
+
+        ModelData meta = new ModelData();
+        meta.setProjectId(projectId);
+        meta.setOriginalFileName(originalFileName);
+        meta.setVertexCount(vertices.size() / 3);
+        meta.setFaceCount(indices != null ? indices.size() / 3 : 0);
+        return meta;
     }
 
     /**
      * Get model data for a project
-     * 从数据库加载建筑模型数据
+     * 从分块合并加载
      */
     public Optional<MeshData> getModelData(String projectId) {
-        return modelDataRepository.findByProjectId(projectId)
-                .map(modelData -> {
-                    MeshData meshData = new MeshData();
-                    meshData.setVertices(modelData.getVertices());
-                    meshData.setIndices(modelData.getIndices());
-                    return meshData;
-                });
+        List<ModelDataChunk> chunks = modelDataChunkRepository.findByProjectIdOrderByChunkIndexAsc(projectId);
+        if (chunks.isEmpty()) {
+            return modelDataRepository.findByProjectId(projectId)
+                    .map(m -> {
+                        MeshData md = new MeshData();
+                        md.setVertices(m.getVertices());
+                        md.setIndices(m.getIndices());
+                        return md;
+                    });
+        }
+
+        List<Double> vertices = new ArrayList<>();
+        List<Integer> indices = new ArrayList<>();
+        for (ModelDataChunk c : chunks) {
+            if (c.getVertexChunk() != null) vertices.addAll(c.getVertexChunk());
+            if (c.getIndexChunk() != null) indices.addAll(c.getIndexChunk());
+        }
+        MeshData meshData = new MeshData();
+        meshData.setVertices(vertices);
+        meshData.setIndices(indices.isEmpty() ? null : indices);
+        return Optional.of(meshData);
     }
 
     /**
      * Check if project has model data
-     * 检查项目是否有模型数据
      */
     public boolean hasModelData(String projectId) {
-        return modelDataRepository.existsByProjectId(projectId);
+        return modelDataChunkRepository.existsByProjectId(projectId)
+                || modelDataRepository.existsByProjectId(projectId);
     }
 
     /**
@@ -180,10 +253,97 @@ public class ProjectService {
     }
 
     /**
+     * 批量计算每个航点数的累计覆盖率，与 KPI Coverage Rate 完全一致
+     */
+    public Map<Integer, Double> calculateCoverageByWaypointCount(
+            String projectId, List<WaypointData> pathPoints, MeshData buildingMesh) {
+        if (pathPoints == null || pathPoints.isEmpty()) return Map.of();
+        MeshData meshToUse = buildingMesh;
+        if (buildingMesh == null || buildingMesh.getVertices() == null || buildingMesh.getVertices().isEmpty()) {
+            MeshData cached = modelCacheService.getCachedModel(projectId);
+            if (cached != null) meshToUse = cached;
+            else {
+                Optional<MeshData> db = getModelData(projectId);
+                if (db.isPresent()) {
+                    meshToUse = db.get();
+                    modelCacheService.cacheModel(projectId, meshToUse);
+                }
+            }
+        } else {
+            modelCacheService.cacheModel(projectId, buildingMesh);
+        }
+        if (meshToUse == null) return Map.of();
+        return coverageCalculatorService.calculateCoverageByWaypointCount(pathPoints, meshToUse);
+    }
+
+    /**
      * Calculate KPI metrics for a project (without building mesh)
      * 保留旧方法用于兼容
      */
     public KPIMetrics calculateKPIs(String projectId) {
         return calculateKPIs(projectId, null, null);
+    }
+
+    /**
+     * Calculate single-viewpoint metrics (coverage/overlap-with-previous) for panel details.
+     * buildingMesh 可以为 null，将按优先级：传入 > 内存缓存 > 数据库 获取。
+     */
+    public CoverageCalculatorService.ViewpointMetrics calculateViewpointMetrics(
+            String projectId,
+            List<WaypointData> pathPoints,
+            Integer index,
+            MeshData buildingMesh
+    ) {
+        if (index == null) {
+            throw new IllegalArgumentException("viewpoint index is required");
+        }
+
+        // 模型数据获取逻辑（优先级：传入数据 > 内存缓存 > 数据库）
+        MeshData meshToUse = buildingMesh;
+
+        if (buildingMesh != null && (buildingMesh.getVertices() != null && !buildingMesh.getVertices().isEmpty())) {
+            modelCacheService.cacheModel(projectId, buildingMesh);
+            meshToUse = buildingMesh;
+        } else {
+            MeshData cachedMesh = modelCacheService.getCachedModel(projectId);
+            if (cachedMesh != null) {
+                meshToUse = cachedMesh;
+            } else {
+                Optional<MeshData> dbMesh = getModelData(projectId);
+                if (dbMesh.isPresent()) {
+                    meshToUse = dbMesh.get();
+                    modelCacheService.cacheModel(projectId, meshToUse);
+                }
+            }
+        }
+
+        return coverageCalculatorService.calculateViewpointMetrics(pathPoints, meshToUse, index);
+    }
+
+    /**
+     * 播放模式高亮：计算已飞过视点与当前视点的可见面索引
+     */
+    public CoverageCalculatorService.PlaybackHighlightResult computePlaybackHighlight(
+            String projectId,
+            List<WaypointData> pastViewpoints,
+            WaypointData currentViewpoint,
+            MeshData buildingMesh
+    ) {
+        MeshData meshToUse = buildingMesh;
+        if (buildingMesh != null && buildingMesh.getVertices() != null && !buildingMesh.getVertices().isEmpty()) {
+            modelCacheService.cacheModel(projectId, buildingMesh);
+            meshToUse = buildingMesh;
+        } else {
+            MeshData cached = modelCacheService.getCachedModel(projectId);
+            if (cached != null) meshToUse = cached;
+            else {
+                Optional<MeshData> dbMesh = getModelData(projectId);
+                if (dbMesh.isPresent()) {
+                    meshToUse = dbMesh.get();
+                    modelCacheService.cacheModel(projectId, meshToUse);
+                }
+            }
+        }
+        return coverageCalculatorService.computePlaybackHighlight(pastViewpoints, currentViewpoint, meshToUse);
     }
 }

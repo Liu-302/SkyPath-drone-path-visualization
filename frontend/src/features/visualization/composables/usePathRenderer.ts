@@ -28,11 +28,7 @@ export function usePathRenderer() {
     parsedPoints: Array<{ x: number; y: number; z: number }>,
     onWaypointClick?: (index: number) => void
   ) => {
-    console.log('开始渲染路径...')
-    console.log('解析的路径点数量:', parsedPoints.length)
-    
     if (parsedPoints.length === 0) {
-      console.log('没有路径数据')
       disposeGroup(pathGroup.value)
       pathGroup.value = null
       return
@@ -121,7 +117,6 @@ export function usePathRenderer() {
 
     // 线段
     if (showPathLines.value && points.length >= 2) {
-      console.log('渲染路径线段...')
       const vertices = points.flatMap(p => [p.x, p.y, p.z])
       const geom = new THREE.BufferGeometry()
       geom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3))
@@ -178,7 +173,6 @@ export function usePathRenderer() {
     }
 
     pathGroup.value = markRaw(group)
-    console.log('路径渲染完成！总共渲染', points.length, '个点')
   }
 
   /**

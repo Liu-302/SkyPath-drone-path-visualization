@@ -30,6 +30,19 @@ export const CAMERA_CONFIG = {
 }
 
 /**
+ * 覆盖率/高亮计算参数（与 CAMERA_CONFIG 统一，基于 DJI Phantom 4 Pro 规格）
+ * 用于播放累计覆盖率、预加载、高亮等，保证与 Mission Overview 的 Coverage Rate 统一
+ */
+export const COVERAGE_CONFIG = {
+  /** 垂直视场角（度）- 与 CAMERA_CONFIG 一致，Phantom 4 Pro 对角线 FOV 84° 换算垂直 FOV≈53.1° */
+  vfov: 53.1,
+  /** 宽高比 - Phantom 4 Pro 16:9 */
+  aspect: 16 / 9,
+  /** 兜底远距离（当射线未命中时），与 CAMERA_CONFIG.far 一致 */
+  fallbackH: 1000,
+}
+
+/**
  * 能耗配置参数
  * 基于 DJI Phantom 4 Pro 官方技术规格
  * 数据来源：DJI官方技术规格文档

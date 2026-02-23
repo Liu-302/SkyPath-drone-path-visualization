@@ -24,17 +24,11 @@
 </template>
 
 <script setup lang="ts">
-// TODO: 成员C/D需要实现以下功能
-// 1. 接收相机参数（位置、朝向、FOV等）
-// 2. 调用camera-utils.ts计算视锥体角点
-// 3. 创建Three.js几何体并添加到场景
-// 4. 响应点击事件，更新显示的视锥体
-
 import { ref, computed, watch, markRaw } from 'vue'
 import type { CameraView } from '@/features/visualization/types/camera'
-import { calculateFrustumCorners, calculateCameraOrientationFromNormal } from '@/shared/utils/camera-utils'
-import { CAMERA_CONFIG } from '@/shared/constants/constants'
-import { Line, BufferGeometry, BufferAttribute, LineBasicMaterial } from 'three'
+import { buildPyramidFromCamera, calculateCameraOrientationFromNormal, computeDynamicHToMesh, vfovToHfov } from '@/shared/utils/camera-utils'
+import { COVERAGE_CONFIG } from '@/shared/constants/constants'
+import { Line, BufferGeometry, BufferAttribute, LineBasicMaterial, type Object3D } from 'three'
 
 interface Props {
   /** 相机视角信息 */
@@ -42,11 +36,26 @@ interface Props {
   
   /** 是否显示视锥体 */
   visible: boolean
+
+  /** 建筑模型（用于动态计算 h：射线最近命中距离） */
+  buildingMesh?: Object3D | null
+
+  /**
+   * 真实相机视场角（度）
+   * - vfovDeg：垂直视场角
+   * - hfovDeg：水平视场角（可不传，将由 vfovDeg + aspect 推导）
+   */
+  /** Override VFOV (default: COVERAGE_CONFIG.vfov to match BuildingHighlighter) */
+  vfovDeg?: number
+  hfovDeg?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
   cameraView: null,
   visible: false,
+  buildingMesh: null,
+  vfovDeg: COVERAGE_CONFIG.vfov,
+  hfovDeg: undefined,
 })
 
 
@@ -56,28 +65,33 @@ const lineObjects = ref<Line[]>([]) // Three.js Line对象数组
 const cameraDir = ref({ x: 0, y: -1, z: 0 })
 const cameraView = computed(() => props.cameraView)
 
-function buildEdgesFromCorners(corners: any) {
-  // corners: { near: [{x,y,z}...], far: [...] }
-  const pts = [...corners.near, ...corners.far]
-  // 边的索引（与createFrustumGeometry一致）
-  const edgeIdx = [
-    [0,1],[1,2],[2,3],[3,0], // near
-    [4,5],[5,6],[6,7],[7,4], // far
-    [0,4],[1,5],[2,6],[3,7]  // connections
+function buildPyramidEdges(
+  apex: { x: number; y: number; z: number },
+  baseCorners: Array<{ x: number; y: number; z: number }>
+) {
+  // baseCorners order: [b1,b2,b3,b4] around the rectangle
+  const v = apex
+  const [b1, b2, b3, b4] = baseCorners
+  const edgePairs: Array<[any, any]> = [
+    [v, b1],
+    [v, b2],
+    [v, b3],
+    [v, b4],
+    [b1, b2],
+    [b2, b3],
+    [b3, b4],
+    [b4, b1],
   ]
 
-  const built: Array<Array<[number, number, number]>> = []
-  edgeIdx.forEach(([a,b]) => {
-    const pa = pts[a]
-    const pb = pts[b]
-    built.push([[pa.x, pa.y, pa.z], [pb.x, pb.y, pb.z]])
-  })
-  return built
+  return edgePairs.map(([a, b]) => [[a.x, a.y, a.z], [b.x, b.y, b.z]] as Array<[number, number, number]>)
 }
 
 watch([
   () => props.cameraView,
-  () => props.visible
+  () => props.visible,
+  () => props.buildingMesh,
+  () => props.vfovDeg,
+  () => props.hfovDeg,
 ], ([newView, vis]) => {
   // console.log('CameraFrustum watch触发:', { hasView: !!newView, visible: vis, viewPosition: newView?.position })
   if (!vis || !newView) {
@@ -89,28 +103,23 @@ watch([
 
   // 兼容性处理：cameraView 可能只包含 normal 或 direction
   let direction = newView.direction
-  let up = (newView as any).up
   if ((!direction || (!direction.x && !direction.y && !direction.z)) && (newView as any).normal) {
     const orient = calculateCameraOrientationFromNormal((newView as any).normal)
     direction = orient.direction
-    up = orient.up
   }
 
   cameraDir.value = direction || { x: 0, y: -1, z: 0 }
 
-  const corners = calculateFrustumCorners(
-    newView.position,
-    direction || { x: 0, y: -1, z: 0 },
-    up || { x: 0,  y: 0, z: 1 },
-    newView.fov || CAMERA_CONFIG.fov,
-    newView.aspect || CAMERA_CONFIG.aspect,
-    newView.near || CAMERA_CONFIG.near,
-    newView.far || CAMERA_CONFIG.far
+  // 与 BuildingHighlighter 使用相同参数，确保线框与高亮投影范围一致
+  const vfovDeg = props.vfovDeg ?? COVERAGE_CONFIG.vfov
+  const hfovDeg = props.hfovDeg ?? vfovToHfov(vfovDeg, COVERAGE_CONFIG.aspect)
+  const dir = direction || { x: 0, y: -1, z: 0 }
+  const h = computeDynamicHToMesh(newView.position, dir, props.buildingMesh, COVERAGE_CONFIG.fallbackH)
+  const pyramid = buildPyramidFromCamera(newView.position, dir, vfovDeg, hfovDeg, h)
+  edges.value = buildPyramidEdges(
+    { x: pyramid.apex.x, y: pyramid.apex.y, z: pyramid.apex.z },
+    pyramid.base.map(p => ({ x: p.x, y: p.y, z: p.z }))
   )
-
-  // console.log('CameraFrustum: corners computed', corners)
-  edges.value = buildEdgesFromCorners(corners)
-  // console.log('CameraFrustum: edges built count=', edges.value.length)
 
   // 创建Three.js Line对象数组
   const lines: Line[] = []
@@ -123,9 +132,9 @@ watch([
       geometry.setAttribute('position', new BufferAttribute(positions, 3))
       
       const material = new LineBasicMaterial({
-        color: 0xff6b6b, // 红色
+        color: 0xff6b6b,
         linewidth: 5,
-        depthTest: false, // 禁用深度测试，确保总是可见
+        depthTest: true,
         depthWrite: false,
       })
       
@@ -136,15 +145,12 @@ watch([
     })
     lineObjects.value = lines
 
-    // 注：createFrustumGeometry 返回 BufferGeometry，可用于更高级的 mesh 渲染（如面/半透明）
-    // const geometry = createFrustumGeometry(corners)
-    // TODO: 如果想要半透明面，可创建 TresMesh 并设置 geometry
+    // 注：如需显示半透明“锥体面”，可以按 pyramid 的 5 个点构造 Mesh（此处仍只画线框）
   },
   { immediate: true, deep: true }
 )
 </script>
 
 <style scoped>
-/* TODO: 成员C/D需要设计样式 */
-/* 视锥体颜色、透明度等效果参数 */
+/* Frustum color and effect params are set inline in LineBasicMaterial */
 </style>

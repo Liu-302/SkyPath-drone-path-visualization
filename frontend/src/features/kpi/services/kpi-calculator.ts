@@ -1,227 +1,13 @@
 /**
- * KPI计算主服务
- *
- * 参考 `kpi_calculation_with_real_data.js` 的实现方式，串联路径长度、
- * 覆盖率、能耗、碰撞等核心指标的科学算法。
+ * KPI 航点/视点详情计算服务
+ * 覆盖率、重叠率、碰撞等核心 KPI 已迁移至后端，本文件仅保留航点详情、电池、安全距离等前端计算。
  */
 
-import type { KPIMetrics, KPICalcParams, CollisionPoint } from '@/features/kpi/types/kpi'
 import { distance3D } from '@/shared/utils/geometry'
-import { coverageCalculator } from './coverage-calculator'
-import { energyCalculator } from './energy-calculator'
-import { collisionDetector } from './collision-detector'
-import { ENERGY_CONFIG, CAMERA_CONFIG } from '@/shared/constants/constants'
+import { ENERGY_CONFIG } from '@/shared/constants/constants'
 import { calculateCameraAngleFromNormal } from '@/features/visualization/services/viewpoint-calculator'
-import { calculateFrustumCorners, getVisibleMeshFaces, calculateFaceArea, calculateTotalBuildingArea, calculateCameraOrientationFromNormal } from '@/shared/utils/camera-utils'
-import { Box3, Vector3, Mesh } from 'three'
+import { Box3, Vector3 } from 'three'
 import type { Object3D } from 'three'
-
-let calculationStatus: 'idle' | 'calculating' | 'completed' | 'error' = 'idle'
-let calculationProgress = 0
-let cancellationRequested = false
-
-export async function calculateAllKPIs(params: KPICalcParams): Promise<KPIMetrics> {
-  const { pathPoints, buildingMesh, options = {} } = params
-  if (!pathPoints || pathPoints.length < 2) {
-    throw new Error('缺少有效的路径点数据，无法计算KPI')
-  }
-
-  calculationStatus = 'calculating'
-  calculationProgress = 0
-  cancellationRequested = false
-
-  const totalSteps = buildingMesh ? 6 : 4
-  let currentStep = 0
-  const advance = async () => {
-    currentStep += 1
-    calculationProgress = Math.min(100, Math.round((currentStep / totalSteps) * 100))
-    // 每次都让出主线程，避免阻塞UI
-    await new Promise(resolve => setTimeout(resolve, 5))
-  }
-
-  try {
-    ensureNotCancelled()
-    const pathLength = calculatePathLength(pathPoints)
-    await advance()
-
-    ensureNotCancelled()
-    const flightTime = calculateFlightTime(pathLength)
-    await advance()
-
-    ensureNotCancelled()
-    const energy = energyCalculator.calculatePathEnergy(pathPoints)
-    await advance()
-
-    let coverage: number | null = null
-    let overlap: number | null = null
-    if (buildingMesh) {
-      try {
-        // 在计算覆盖率前让出主线程
-        await new Promise(resolve => setTimeout(resolve, 10))
-        const coverageMetrics = coverageCalculator.calculatePathCoverageMetrics(pathPoints, buildingMesh)
-        coverage = clamp01(coverageMetrics.coverage / 100)
-        overlap = clamp01(coverageMetrics.overlap / 100)
-      } catch (error) {
-        console.error('覆盖率计算失败:', error)
-        // 计算失败时保持null，不设为0
-        coverage = null
-        overlap = null
-      }
-    }
-    // 如果没有建筑模型，coverage和overlap保持为null，表示无法计算
-    await advance()
-
-    // 给主线程更多时间处理UI
-    await new Promise(resolve => setTimeout(resolve, 20))
-
-    ensureNotCancelled()
-    const collisionResult = buildingMesh
-      ? collisionDetector.detectPathCollisions(pathPoints, buildingMesh)
-      : { collisionCount: 0, hasCollision: false, collisions: [] as CollisionPoint[] }
-    await advance()
-
-    const metrics: KPIMetrics = {
-      pathLength,
-      flightTime,
-      coverage,
-      overlap,
-      collisionCount: collisionResult.collisionCount,
-      hasCollision: collisionResult.hasCollision,
-      energy,
-      status: 'completed',
-      progress: 100,
-    }
-
-    if (options.includeCollisionDetails) {
-      metrics.collisionDetails = collisionResult.collisions
-    }
-
-    calculationStatus = 'completed'
-    calculationProgress = 100
-
-    return metrics
-  } catch (error) {
-    calculationStatus = 'error'
-    calculationProgress = 0
-    throw error
-  } finally {
-    cancellationRequested = false
-  }
-}
-
-export function getCalculationProgress(): number {
-  return calculationProgress
-}
-
-export function cancelCalculation(): void {
-  cancellationRequested = true
-}
-
-export function getCalculationStatus(): 'idle' | 'calculating' | 'completed' | 'error' {
-  return calculationStatus
-}
-
-export function calculateSingleViewpointMetrics(pathPoints: KPICalcParams['pathPoints'], currentIndex: number) {
-  if (!pathPoints?.length || currentIndex < 0 || currentIndex >= pathPoints.length) {
-    throw new Error('视点索引无效')
-  }
-
-  const currentPoint = pathPoints[currentIndex]
-  const startPoint = pathPoints[0]
-  const prevPoint = currentIndex > 0 ? pathPoints[currentIndex - 1] : null
-
-  const distanceFromStart = distance3D(startPoint.position, currentPoint.position)
-  const flightTimeToCurrent = calculateCumulativeTime(pathPoints, currentIndex)
-  const distanceToPrev = prevPoint ? distance3D(prevPoint.position, currentPoint.position) : 0
-  const singlePointCoverage = calculateSinglePointCoverage(pathPoints, currentIndex)
-  const singlePointOverlap = calculateSinglePointOverlap(pathPoints, currentIndex)
-  const cameraAngle = calculateCameraAngle(currentPoint.normal)
-
-  return {
-    position: { ...currentPoint.position },
-    distanceFromStart: round2(distanceFromStart),
-    flightTimeToCurrent: round2(flightTimeToCurrent),
-    distanceToPrev: round2(distanceToPrev),
-    singlePointCoverage: round2(singlePointCoverage * 100),
-    singlePointOverlap: round2(singlePointOverlap * 100),
-    cameraAngle: round2(cameraAngle),
-  }
-}
-
-function calculatePathLength(pathPoints: KPICalcParams['pathPoints']): number {
-  let totalDistance = 0
-  for (let i = 1; i < pathPoints.length; i++) {
-    totalDistance += distance3D(pathPoints[i - 1].position, pathPoints[i].position)
-  }
-  return totalDistance
-}
-
-function calculateFlightTime(pathLength: number): number {
-  return pathLength / ENERGY_CONFIG.speed
-}
-
-function calculateCumulativeTime(pathPoints: KPICalcParams['pathPoints'], currentIndex: number): number {
-  let totalTime = 0
-  for (let i = 1; i <= currentIndex; i++) {
-    const segmentLength = distance3D(pathPoints[i - 1].position, pathPoints[i].position)
-    totalTime += segmentLength / ENERGY_CONFIG.speed
-  }
-  return totalTime
-}
-
-function calculateSinglePointCoverage(pathPoints: KPICalcParams['pathPoints'], currentIndex: number): number {
-  const currentPoint = pathPoints[currentIndex]
-  const coverageRadius = 15
-  let coveredPoints = 0
-
-  for (let i = 0; i < pathPoints.length; i++) {
-    if (i === currentIndex) continue
-    const distance = distance3D(currentPoint.position, pathPoints[i].position)
-    if (distance <= coverageRadius) {
-      coveredPoints += 1
-    }
-  }
-
-  return clamp01(coveredPoints / Math.max(1, pathPoints.length - 1))
-}
-
-function calculateSinglePointOverlap(pathPoints: KPICalcParams['pathPoints'], currentIndex: number): number {
-  const currentPoint = pathPoints[currentIndex]
-  const overlapRadius = 10
-  let overlapSum = 0
-  let overlapCount = 0
-
-  for (let i = 0; i < pathPoints.length; i++) {
-    if (i === currentIndex) continue
-    const distance = distance3D(currentPoint.position, pathPoints[i].position)
-    if (distance < overlapRadius) {
-      overlapSum += 1 - distance / overlapRadius
-      overlapCount += 1
-    }
-  }
-
-  return clamp01(overlapCount > 0 ? overlapSum / overlapCount : 0)
-}
-
-function calculateCameraAngle(normal?: { x: number; y: number; z: number }): number {
-  if (!normal) return 0
-  const verticalAngle = Math.acos(Math.min(1, Math.abs(normal.y)))
-  return (verticalAngle * 180) / Math.PI
-}
-
-function ensureNotCancelled() {
-  if (cancellationRequested) {
-    throw new Error('KPI计算已被取消')
-  }
-}
-
-function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, value))
-}
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100
-}
 
 /**
  * 单个航点的详细信息接口
@@ -288,7 +74,7 @@ export function calculateWaypointDetail(
   batteryCapacity: number = 89.2 // DJI Phantom 4 Pro 官方规格：89.2 Wh
 ): WaypointDetail {
   if (waypointIndex < 0 || waypointIndex >= pathPoints.length) {
-    throw new Error('航点索引无效')
+    throw new Error('Invalid waypoint index')
   }
 
   const point = pathPoints[waypointIndex]
@@ -412,9 +198,26 @@ export function calculateMinDistanceToObstacle(
       return null
     }
 
-    // 计算点到包围盒的最小距离
-    const clampedPoint = waypointPos.clone().clamp(buildingBox.min, buildingBox.max)
-    const minDistance = waypointPos.distanceTo(clampedPoint)
+    const { min, max } = buildingBox
+    let minDistance: number
+
+    // 判断航点是否在包围盒内部
+    const isInside =
+      waypointPos.x >= min.x && waypointPos.x <= max.x &&
+      waypointPos.y >= min.y && waypointPos.y <= max.y &&
+      waypointPos.z >= min.z && waypointPos.z <= max.z
+
+    if (isInside) {
+      // 在内部：到最近表面的距离 = 各轴到最近面的距离的最小值
+      const distToX = Math.min(waypointPos.x - min.x, max.x - waypointPos.x)
+      const distToY = Math.min(waypointPos.y - min.y, max.y - waypointPos.y)
+      const distToZ = Math.min(waypointPos.z - min.z, max.z - waypointPos.z)
+      minDistance = Math.min(distToX, distToY, distToZ)
+    } else {
+      // 在外部：到包围盒最近点的距离
+      const clampedPoint = waypointPos.clone().clamp(min, max)
+      minDistance = waypointPos.distanceTo(clampedPoint)
+    }
 
     // 保留1位小数
     return Math.round(minDistance * 10) / 10
@@ -453,102 +256,9 @@ export function calculateViewpointDetail(
 
   const point = pathPoints[waypointIndex]
 
-  // 计算与前一个航点的重叠率
-  if (waypointIndex > 0 && buildingModel) {
-    try {
-      const meshes = extractMeshes(buildingModel)
-      if (meshes.length === 0) {
-        throw new Error('buildingModel 中未找到可用 Mesh')
-      }
-
-      // 构建视点数据数组（从起点到当前航点）
-      const viewpoints = []
-      for (let i = 0; i <= waypointIndex; i++) {
-        const p = pathPoints[i]
-        if (p) {
-          // 获取相机朝向
-          let direction = { x: 0, y: -1, z: 0 } // 默认向下
-          if (p.normal && typeof p.normal === 'object') {
-            const normal = {
-              x: p.normal.x ?? 0,
-              y: p.normal.y ?? 0,
-              z: p.normal.z ?? 0
-            }
-            const normalLength = Math.sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z)
-            if (normalLength > 0.001) {
-              direction = {
-                x: normal.x / normalLength,
-                y: normal.y / normalLength,
-                z: normal.z / normalLength
-              }
-            }
-          }
-
-          viewpoints.push({
-            position: { x: p.x, y: p.y, z: p.z },
-            direction,
-            fov: CAMERA_CONFIG.fov,
-            aspect: CAMERA_CONFIG.aspect,
-            near: CAMERA_CONFIG.near,
-            far: CAMERA_CONFIG.far
-          })
-        }
-      }
-
-      // 计算当前航点与前一个航点的重叠率
-      if (viewpoints.length > 1) {
-        const currentViewpoint = viewpoints[waypointIndex]
-        const previousViewpoint = viewpoints[waypointIndex - 1]
-
-        // 计算当前视点的视锥体
-        const { up: currentUp } = calculateCameraOrientationFromNormal(currentViewpoint.direction)
-        const currentFrustum = calculateFrustumCorners(
-          currentViewpoint.position,
-          currentViewpoint.direction,
-          currentUp,
-          currentViewpoint.fov,
-          currentViewpoint.aspect,
-          currentViewpoint.near,
-          currentViewpoint.far
-        )
-        const { up: prevUp } = calculateCameraOrientationFromNormal(previousViewpoint.direction)
-        const prevFrustum = calculateFrustumCorners(
-          previousViewpoint.position,
-          previousViewpoint.direction,
-          prevUp,
-          previousViewpoint.fov,
-          previousViewpoint.aspect,
-          previousViewpoint.near,
-          previousViewpoint.far
-        )
-
-        let intersectionArea = 0
-        let totalArea = 0
-
-        for (const mesh of meshes) {
-          const currentVisibleFaces = new Set(getVisibleMeshFaces(currentFrustum, mesh))
-          const prevVisibleFaces = new Set(getVisibleMeshFaces(prevFrustum, mesh))
-
-          for (const faceIndex of currentVisibleFaces) {
-            if (prevVisibleFaces.has(faceIndex)) {
-              intersectionArea += calculateFaceArea(mesh, faceIndex)
-            }
-          }
-
-          totalArea += calculateTotalBuildingArea(mesh)
-        }
-
-        if (totalArea > 0) {
-          overlap = (intersectionArea / totalArea) * 100
-        } else {
-          overlap = 0
-        }
-      }
-    } catch (error) {
-      console.error('计算重叠率失败:', error)
-      overlap = null
-    }
-  }
+  // 与前一航点的重叠率：已迁移到后端（四棱锥 + 动态h + 航点normal），这里不再做本地计算
+  // 面板展示将通过后端接口获取并显示
+  overlap = null
 
   // 计算相机角度
   let pitch = defaultPitch
@@ -583,22 +293,4 @@ export function calculateViewpointDetail(
     roll: 0, // 固定为 0
     overlap: overlap !== null ? Math.round(overlap * 10) / 10 : null
   }
-}
-
-function extractMeshes(model: Object3D | null): Mesh[] {
-  const meshes: Mesh[] = []
-  if (!model) return meshes
-
-  if (typeof model.traverse === 'function') {
-    model.traverse(child => {
-      const candidate = child as Mesh
-      if ((candidate as any).isMesh) {
-        meshes.push(candidate)
-      }
-    })
-  } else if ((model as any).isMesh) {
-    meshes.push(model as Mesh)
-  }
-
-  return meshes
 }

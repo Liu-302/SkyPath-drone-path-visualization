@@ -37,13 +37,11 @@ export class BackendModelService {
    */
   static async uploadOBJ(file: File, projectId: string = this.DEFAULT_PROJECT_ID): Promise<BackendModelData> {
     if (!this.useBackend) {
-      throw new Error('后端服务未启用')
+      throw new Error('Backend service is not enabled')
     }
     
     const formData = new FormData()
     formData.append('file', file)
-
-    console.log(`[后端服务] 上传OBJ文件: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`)
 
     let response: Response
     try {
@@ -59,11 +57,11 @@ export class BackendModelService {
       clearTimeout(timeoutId)
 
       if (!response.ok) {
-        let errorMessage = `上传失败: ${response.status}`
+        let errorMessage = `Upload failed: ${response.status}`
         if (response.status === 413) {
-          errorMessage = '文件太大，服务器无法处理。请尝试压缩文件或使用更小的模型。'
+          errorMessage = 'File too large. Try compressing the file or using a smaller model.'
         } else if (response.status === 500) {
-          errorMessage = '服务器处理文件时出错，可能是文件格式问题或内存不足。'
+          errorMessage = 'Server error processing file. Check file format or try a smaller model.'
         } else {
           const errorText = await response.text().catch(() => response.statusText)
           if (errorText) {
@@ -74,26 +72,15 @@ export class BackendModelService {
       }
     } catch (error: any) {
       if (error.name === 'AbortError') {
-        throw new Error('请求超时，请检查后端服务是否正常运行')
+        throw new Error('Request timeout. Check if the backend service is running.')
       }
       if (error.message?.includes('Failed to fetch')) {
-        throw new Error('无法连接到后端服务，请确保后端服务正在运行')
+        throw new Error('Cannot connect to backend. Ensure the backend service is running.')
       }
       throw error
     }
 
     const data = await response.json()
-
-    console.log(`[后端服务] OBJ上传成功:`, {
-      原始大小: `${(data.originalSize / 1024).toFixed(2)} KB`,
-      优化后: `${(data.optimizedSize / 1024).toFixed(2)} KB`,
-      压缩率: `${data.compressionRatio.toFixed(2)}%`,
-      顶点数: data.vertexCount,
-      三角形数: data.triangleCount,
-      解析耗时: `${data.parseTime}ms`,
-      优化耗时: `${data.optimizeTime}ms`,
-    })
-
     return this.convertToThreeJS(data)
   }
 
@@ -101,19 +88,12 @@ export class BackendModelService {
    * 从后端加载模型数据
    */
   static async loadModelData(projectId: string = this.DEFAULT_PROJECT_ID): Promise<BackendModelData> {
-    console.log(`[后端服务] 加载模型数据: 项目ID=${projectId}`)
-
     const response = await fetch(`${this.BASE_URL}/${projectId}/model`)
     if (!response.ok) {
-      throw new Error(`加载失败: ${response.statusText}`)
+      throw new Error(`Load failed: ${response.statusText}`)
     }
 
     const data = await response.json()
-    console.log(`[后端服务] 模型数据加载成功:`, {
-      顶点数: data.vertexCount,
-      三角形数: data.triangleCount,
-    })
-
     return this.convertToThreeJS(data)
   }
 
@@ -121,17 +101,13 @@ export class BackendModelService {
    * 删除后端模型数据
    */
   static async deleteModelData(projectId: string = this.DEFAULT_PROJECT_ID): Promise<void> {
-    console.log(`[后端服务] 删除模型数据: 项目ID=${projectId}`)
-
     const response = await fetch(`${this.BASE_URL}/${projectId}/model`, {
       method: 'DELETE',
     })
 
     if (!response.ok) {
-      throw new Error(`删除失败: ${response.statusText}`)
+      throw new Error(`Delete failed: ${response.statusText}`)
     }
-
-    console.log(`[后端服务] 模型数据已删除`)
   }
 
   /**
@@ -140,7 +116,7 @@ export class BackendModelService {
   private static convertToThreeJS(data: any): BackendModelData {
     // 确保数据存在
     if (!data || !data.vertices || !Array.isArray(data.vertices)) {
-      throw new Error('无效的模型数据：缺少顶点数据')
+      throw new Error('Invalid model data: missing vertex data')
     }
 
     // 转换顶点数据
@@ -161,22 +137,17 @@ export class BackendModelService {
     // 转换索引数据 - 确保是整数数组
     let indices: Uint16Array | Uint32Array | undefined = undefined
     if (data.indices && Array.isArray(data.indices) && data.indices.length > 0) {
-      // 检查索引值范围，决定使用 Uint16 还是 Uint32
-      const maxIndex = Math.max(...data.indices)
+      // 检查索引值范围，决定使用 Uint16 还是 Uint32（避免 Math.max(...arr) 大数组栈溢出）
+      let maxIndex = 0
+      for (let i = 0; i < data.indices.length; i++) {
+        if (data.indices[i] > maxIndex) maxIndex = data.indices[i]
+      }
       if (maxIndex < 65535) {
         indices = new Uint16Array(data.indices)
       } else {
         indices = new Uint32Array(data.indices)
       }
     }
-
-    console.log('[数据转换] 模型数据:', {
-      顶点数: vertices.length / 3,
-      法线数: normals ? normals.length / 3 : 0,
-      UV数: uvs ? uvs.length / 2 : 0,
-      索引数: indices ? indices.length : 0,
-      三角形数: indices ? indices.length / 3 : 0,
-    })
 
     return {
       vertices,
@@ -197,19 +168,14 @@ export class BackendModelService {
 
     // 验证数据
     if (!modelData.vertices || modelData.vertices.length === 0) {
-      throw new Error('模型数据无效：缺少顶点数据')
+      throw new Error('Invalid model data: missing vertex data')
     }
 
     if (modelData.vertices.length % 3 !== 0) {
-      throw new Error(`模型数据无效：顶点数量不是3的倍数 (${modelData.vertices.length})`)
+      throw new Error(`Invalid model data: vertex count must be multiple of 3 (${modelData.vertices.length})`)
     }
 
     const vertexCount = modelData.vertices.length / 3
-    console.log('[Three.js] 创建Mesh:', {
-      顶点数: vertexCount,
-      索引数: modelData.indices ? modelData.indices.length : 0,
-      三角形数: modelData.indices ? modelData.indices.length / 3 : 0,
-    })
 
     // 设置顶点位置
     geometry.setAttribute('position', new THREE.BufferAttribute(modelData.vertices, 3))
@@ -242,14 +208,18 @@ export class BackendModelService {
     // 设置索引
     if (modelData.indices && modelData.indices.length > 0) {
       if (modelData.indices.length % 3 !== 0) {
-        throw new Error(`模型数据无效：索引数量不是3的倍数 (${modelData.indices.length})`)
+        throw new Error(`Invalid model data: index count must be multiple of 3 (${modelData.indices.length})`)
       }
       
-      // 验证索引范围
-      const maxIndex = Math.max(...Array.from(modelData.indices))
+      // 验证索引范围（避免 Math.max(...arr) 大数组栈溢出）
+      let maxIndex = 0
+      const idxArr = modelData.indices
+      for (let i = 0; i < idxArr.length; i++) {
+        if (idxArr[i] > maxIndex) maxIndex = idxArr[i]
+      }
       if (maxIndex >= vertexCount) {
         console.error(`[Three.js] 索引超出范围: 最大索引 ${maxIndex}, 顶点数 ${vertexCount}`)
-        throw new Error(`模型数据无效：索引超出范围 (最大索引: ${maxIndex}, 顶点数: ${vertexCount})`)
+        throw new Error(`Invalid model data: index out of range (max index: ${maxIndex}, vertex count: ${vertexCount})`)
       }
 
       // setIndex 应该直接接受数组，不需要 BufferAttribute
@@ -277,19 +247,6 @@ export class BackendModelService {
 
     // 创建Mesh
     const mesh = new THREE.Mesh(geometry, material)
-
-    // 计算包围盒用于调试
-    const box = new THREE.Box3().setFromObject(mesh)
-    const size = box.getSize(new THREE.Vector3())
-    console.log('[Three.js] 创建Mesh成功:', {
-      尺寸: {
-        x: size.x.toFixed(2),
-        y: size.y.toFixed(2),
-        z: size.z.toFixed(2),
-      },
-      顶点数: geometry.attributes.position.count,
-      三角形数: geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3,
-    })
 
     return mesh
   }

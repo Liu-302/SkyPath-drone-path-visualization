@@ -1,273 +1,140 @@
-# SkyPath 3D Visualization Project
+# SkyPath
 
-A full-stack 3D visualization application for drone path planning and building inspection.
+全栈 3D 无人机航路规划与建筑巡检可视化应用。
 
-## Table of Contents
+## 功能概览
 
-- [Overview](#overview)
-- [Tech Stack](#tech-stack)
-- [Features](#features)
-- [Project Structure](#project-structure)
-- [Prerequisites](#prerequisites)
-- [Quick Start](#quick-start)
-- [Documentation](#documentation)
-- [Development](#development)
-- [Deployment](#deployment)
-- [Contributing](#contributing)
-- [License](#license)
+- **3D 可视化**：OBJ 建筑模型 + 无人机路径
+- **航点编辑**：插入、删除、重排、撤销/重做
+- **KPI 计算**：覆盖率、重叠率、能耗、碰撞检测
+- **用户系统**：登录/注册，项目云端保存
+- **项目管理**：Home 首页、新建/打开/重命名/删除项目
 
-## Overview
+## 技术栈
 
-SkyPath is an interactive 3D web application designed for drone flight path planning and building inspection. It enables users to:
+| 层级 | 技术 |
+|------|------|
+| 前端 | Vue 3 + TresJS + Three.js + Pinia + TypeScript |
+| 后端 | Spring Boot 3.2 + Java 17 |
+| 数据库 | MongoDB |
+| 构建 | FesJS (Vite) / Maven |
 
-- Upload and visualize 3D building models (OBJ format)
-- Create and edit drone flight paths with waypoints
-- Real-time KPI calculation (coverage, overlap, energy, collision detection)
-- Visualize camera viewpoints and frustums
-- Undo/Redo functionality for path editing
+## 前置要求
 
-## 🛠 Tech Stack
+- **Java 17+**、**Maven 3.6+**
+- **Node.js 18+**、**Yarn**
+- **Docker Desktop**（用于本地 MongoDB）
 
-### Frontend
-- **Framework**: Vue 3 with Composition API
-- **3D Engine**: Three.js + TresJS
-- **State Management**: Pinia
-- **Build Tool**: Vite (via FesJS)
-- **Styling**: SCSS
-- **TypeScript**: Full type safety
+## 快速开始
 
-### Backend
-- **Framework**: Spring Boot 3.2.0
-- **Language**: Java 17
-- **Database**: MongoDB
-- **ORM**: Spring Data MongoDB
-- **Build Tool**: Maven
-
-## ✨ Features
-
-### Core Features
-- **3D Visualization**: Interactive 3D building models with drone path visualization
-- **Path Planning**: Create and edit drone flight paths with waypoints
-- **Real-time KPI Calculation**: Instant feedback on path modifications
-  - Coverage percentage
-  - Overlap detection
-  - Energy consumption estimation
-  - Collision detection
-- **Camera Views**: Visualize camera frustums and viewpoints
-- **Undo/Redo**: Full history support with keyboard shortcuts (Ctrl+Z, Ctrl+Y)
-
-### User Experience
-- Drag and drop file upload
-- Particle loading animation
-- Intuitive 3D camera controls
-- Responsive design
-- Real-time validation with English error messages
-
-## Project Structure
-
-```
-grp-skypath/
-├── frontend/                      # Vue.js frontend application
-│   ├── src/
-│   │   ├── features/             # Feature modules
-│   │   │   ├── kpi/           # KPI calculation and display
-│   │   │   ├── upload/         # File upload and model loading
-│   │   │   ├── visualization/  # 3D visualization
-│   │   │   └── shared/        # Shared components
-│   │   ├── pages/              # Page components
-│   │   ├── stores/             # Pinia stores
-│   │   ├── shared/             # Global utilities and constants
-│   │   └── styles/            # Global styles
-│   ├── public/                 # Static assets
-│   ├── package.json           # Dependencies
-│   ├── tsconfig.json         # TypeScript config
-│   └── README.md            # Frontend documentation
-│
-├── backend/                       # Spring Boot backend application
-│   ├── src/main/java/com/skypath/backend/
-│   │   ├── config/            # Configuration (CORS, MongoDB)
-│   │   ├── controller/        # REST API controllers
-│   │   ├── service/           # Business logic
-│   │   ├── repository/        # Data access layer
-│   │   ├── entity/            # MongoDB entities
-│   │   └── dto/              # Data transfer objects
-│   ├── src/main/resources/
-│   │   └── application.properties  # App configuration
-│   ├── pom.xml              # Maven configuration
-│   ├── README.md            # Backend documentation
-│   └── API_EXAMPLES.md      # API usage examples
-│
-├── .gitignore
-├── .editorconfig
-├── LICENSE
-├── README.md               # This file
-├── 项目结构说明.md          # Chinese structure documentation
-└── 默认数据配置表.md        # Data configuration reference
-```
-
-## Prerequisites
-
-### Frontend
-- **Node.js**: 18+
-- **Package Manager**: Yarn (recommended) or npm
-- **Browser**: Chrome, Firefox, Safari, or Edge (latest version)
-
-### Backend
-- **Java**: 17+
-- **Maven**: 3.6+
-- **MongoDB**: 5.0+
-
-## Quick Start
-
-### 方式 1：使用本地 Docker MongoDB（开发推荐）
-
-#### 1. 启动 MongoDB
+### 1. 启动 MongoDB
 
 ```bash
-# Windows
-start-mongodb.bat
-
-# macOS/Linux
-chmod +x start-mongodb.sh
-./start-mongodb.sh
-
-# 或直接使用 Docker Compose
 docker-compose up -d
 ```
 
-MongoDB 将在 `localhost:27017` 运行
+验证：`docker-compose ps` 中 `skypath-mongodb` 为 `Up`。
 
-#### 2. 启动后端
+### 2. 启动后端
 
 ```bash
 cd backend
 mvn spring-boot:run
 ```
 
-后端将在 `http://localhost:8080` 运行
+后端运行于 `http://localhost:8080`。
 
-#### 3. 启动前端
+### 3. 启动前端
 
 ```bash
 cd frontend
-
-# Install dependencies (first time only)
-yarn install
-
-# Start development server
+yarn install    # 首次运行
 yarn dev
 ```
 
-前端将在 `http://localhost:8000` 运行
+前端运行于 `http://localhost:8000`。
 
-### 方式 2：使用 MongoDB Atlas（生产环境）
+### 4. 首次使用
 
-1. 按照 [MongoDB Atlas 设置指南](./MONGODB_ATLAS_SETUP.md) 设置 MongoDB Atlas
-2. 创建 `.env.prod` 文件并配置连接字符串
-3. 启动后端：
+1. 访问 `http://localhost:8000`，进入登录页
+2. 点击 **Create Account** 注册（用户名、邮箱、密码至少 6 位）
+3. 注册后自动登录，进入 **Home** 首页
+4. 点击 **New Project** 新建项目，上传 OBJ 模型和 JSON 路径
+5. 在可视化页面可编辑航点、查看 KPI、导出路径、保存到云端
+
+## 服务地址
+
+| 服务 | 地址 |
+|------|------|
+| MongoDB | `localhost:27017` |
+| 后端 | `http://localhost:8080` |
+| 前端 | `http://localhost:8000` |
+
+## 项目结构
+
+```
+grp-skypath-new/
+├── frontend/                 # Vue 前端
+│   ├── src/
+│   │   ├── features/         # 功能模块 (kpi, upload, visualization, shared)
+│   │   ├── pages/            # 页面 (index, Login, Home, Upload, Visualize)
+│   │   ├── stores/           # Pinia 状态
+│   │   └── shared/           # 工具、服务、配置
+│   └── package.json
+├── backend/                  # Spring Boot 后端
+│   ├── src/main/java/.../
+│   │   ├── controller/      # AuthController, ProjectController
+│   │   ├── service/          # 业务逻辑
+│   │   ├── repository/      # 数据访问
+│   │   └── entity/           # 实体
+│   └── pom.xml
+├── docker-compose.yml        # MongoDB 容器
+└── README.md
+```
+
+## 常用命令
+
 ```bash
-cd backend
+# 启动所有服务（需 3 个终端）
+docker-compose up -d
+cd backend && mvn spring-boot:run
+cd frontend && yarn dev
+
+# MongoDB 管理
+docker-compose logs -f mongodb
+docker exec -it skypath-mongodb mongosh skypath
+```
+
+## 故障排查
+
+| 问题 | 处理 |
+|------|------|
+| Docker 连接失败 | 确保 Docker Desktop 已启动 |
+| 端口 27017 被占用 | 运行 `netstat -ano` 查找占用进程并停止 |
+| 后端连不上 MongoDB | 确认 `docker-compose ps` 中 MongoDB 为 Up |
+| 前端 CORS 错误 | 确认后端已启动，检查 `application.properties` 中 CORS |
+| 登录失败 | 旧版明文密码用户需重新注册 |
+
+## 生产部署
+
+- **MongoDB**：使用 MongoDB Atlas 或自建
+- **JWT**：设置环境变量 `JWT_SECRET`（至少 32 字符）
+- **前端**：构建时设置 `VITE_BACKEND_URL` 为后端地址
+- **CORS**：设置 `CORS_ORIGINS` 包含前端域名
+
+```bash
+# 后端生产示例
 set SPRING_PROFILES_ACTIVE=prod
-set MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/skypath
+set MONGODB_URI=mongodb+srv://...
+set JWT_SECRET=your-secret-key
 mvn spring-boot:run
 ```
 
-详细设置步骤请参考：[MongoDB Atlas 设置指南](./MONGODB_ATLAS_SETUP.md)
+## 相关文档
 
-## Documentation
-
-- **[Frontend Documentation](./frontend/README.md)** - Detailed frontend architecture and development guide
-- **[Backend Documentation](./backend/README.md)** - Backend API reference and architecture
-- **[API Examples](./backend/API_EXAMPLES.md)** - Example API calls and responses
-- **[项目结构说明.md](./项目结构说明.md)** - Chinese project structure documentation
-- **[默认数据配置表.md](./默认数据配置表.md)** - Data configuration reference
-
-## Development
-
-### Frontend Development
-
-```bash
-cd frontend
-yarn dev
-```
-
-The development server runs at `http://localhost:8000` with hot reload enabled.
-
-#### Key Files to Edit
-- `src/pages/Visualize.vue` - Main visualization page
-- `src/features/kpi/` - KPI calculation and display
-- `src/features/visualization/` - 3D rendering components
-- `src/stores/` - Pinia state management
-
-### Backend Development
-
-```bash
-cd backend
-mvn spring-boot:run
-```
-
-The backend runs at `http://localhost:8080`.
-
-#### Key Files to Edit
-- `src/main/java/com/skypath/backend/controller/` - Add new API endpoints
-- `src/main/java/com/skypath/backend/service/` - Implement business logic
-- `src/main/java/com/skypath/backend/repository/` - Add data access methods
-- `src/main/resources/application.properties` - Configure MongoDB and CORS
-
-## Deployment
-
-### Frontend Deployment
-
-```bash
-cd frontend
-yarn build
-```
-
-The static files will be built in the `dist/` directory. Deploy to any static web server (Nginx, Apache, Vercel, etc.).
-
-### Backend Deployment
-
-```bash
-cd backend
-mvn clean package
-java -jar target/backend-1.0.0.jar
-```
-
-For production deployment, consider:
-- Using a reverse proxy (Nginx)
-- Enabling HTTPS
-- Setting up process management (systemd, PM2)
-- Configuring MongoDB replica sets for high availability
-
-## Contributing
-
-Contributions are welcome! Please follow these guidelines:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Code Style
-- Frontend: Follow Vue 3 Style Guide
-- Backend: Follow Spring Boot conventions
-- Use meaningful commit messages
-- Write tests for new features
+- [API 示例](./backend/API_EXAMPLES.md) - 接口调用示例
+- [默认数据配置表](./默认数据配置表.md) - 相机、能耗、无人机等参数说明
 
 ## License
 
-This project is licensed under the terms of the [LICENSE](LICENSE) file.
-
-## Acknowledgments
-
-- **Three.js** - 3D rendering engine
-- **Vue.js** - Progressive JavaScript framework
-- **Spring Boot** - Java application framework
-- **MongoDB** - NoSQL database
-
-## Contact
-
-For questions or support, please open an issue on GitHub.
-
----
+见 [LICENSE](./LICENSE) 文件。

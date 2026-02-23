@@ -1,5 +1,5 @@
 <template>
-  <div v-if="visible" class="loading-overlay">
+  <div v-if="visible" class="loading-overlay" :class="{ 'loading-overlay-dimmed': dimmed }">
     <div class="loading-container">
       <!-- 无人机主体 -->
       <div class="drone-body">
@@ -26,8 +26,8 @@
         <!-- 中心机身 -->
         <div class="drone-center"></div>
       </div>
-      <p class="loading-text">Loading Data...</p>
-      <div class="loading-progress-container">
+      <p class="loading-text">{{ loadingText }}</p>
+      <div v-if="showProgress" class="loading-progress-container">
         <span class="progress-text">{{ progress }}%</span>
         <div class="loading-progress">
           <div class="progress-bar-fill" :style="{ width: progress + '%' }"></div>
@@ -40,10 +40,21 @@
 <script setup lang="ts">
 interface Props {
   visible: boolean
-  progress: number
+  progress?: number
+  /** 是否显示进度条，默认 true */
+  showProgress?: boolean
+  /** 加载文案，默认 "Loading Data..." */
+  loadingText?: string
+  /** 是否使用半透明背景（用于覆盖在场景上），默认 false */
+  dimmed?: boolean
 }
 
-defineProps<Props>()
+withDefaults(defineProps<Props>(), {
+  progress: 0,
+  showProgress: true,
+  loadingText: 'Loading Data...',
+  dimmed: false,
+})
 </script>
 
 <style scoped>
@@ -58,6 +69,11 @@ defineProps<Props>()
   background: #000000;
   color: var(--text-primary); 
   z-index: 9999;
+}
+
+.loading-overlay-dimmed {
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 9998;
 }
 
 .loading-container {

@@ -54,7 +54,7 @@ public class KPICalculatorService {
                     coverage = Math.max(0, Math.min(1, metrics.coverage / 100.0));
                     overlap = Math.max(0, Math.min(1, metrics.overlap / 100.0));
                 } catch (Exception e) {
-                    log.error("覆盖率计算失败:", e);
+                    log.error("Coverage calculation failed:", e);
                     // 计算失败时返回 null，前端会显示 N/A
                     coverage = null;
                     overlap = null;
@@ -70,7 +70,7 @@ public class KPICalculatorService {
             try {
                 collisionResult = collisionDetectorService.detectPathCollisions(pathPoints, buildingMesh);
             } catch (Exception e) {
-                log.error("碰撞检测失败:", e);
+                log.error("Collision detection failed:", e);
                 // 如果碰撞检测失败，返回无碰撞结果
                 collisionResult = new CollisionDetectorService.CollisionResult(0, false, new ArrayList<>());
             }
@@ -93,7 +93,7 @@ public class KPICalculatorService {
                     metrics.setCollisionDetails(collisionResult.collisions);
                 }
             } catch (Exception e) {
-                log.error("构建KPI指标失败:", e);
+                log.error("Failed to build KPI metrics:", e);
                 throw new IllegalArgumentException("构建KPI指标失败: " + e.getMessage(), e);
             }
 
@@ -103,7 +103,7 @@ public class KPICalculatorService {
             // 重新抛出参数异常
             throw e;
         } catch (Exception e) {
-            log.error("KPI计算失败:", e);
+            log.error("KPI calculation failed:", e);
             throw new IllegalArgumentException("KPI计算失败: " + e.getMessage(), e);
         }
     }

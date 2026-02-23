@@ -2,6 +2,8 @@
   <div class="kpi-panel">
     <KPIHeader
       :disabled="isCalculating"
+      :is-in-playback-mode="datasetStore.isPlaybackMode"
+      :is-paused="datasetStore.isPaused"
       @play="handlePlay"
       @pause="handlePause"
       @stop="handleStop"
@@ -14,8 +16,8 @@
       @retry="retryCalculation"
     />
 
-    <!-- 撤销/重置按钮 -->
-    <div class="undo-redo-bar">
+    <!-- 撤销/重置按钮 - 播放时禁用 -->
+    <div v-show="!datasetStore.isPlaybackMode" class="undo-redo-bar">
       <button
         class="undo-button"
         :disabled="!datasetStore.canUndo()"
@@ -40,16 +42,26 @@
     <div class="panel-content">
       <div class="panel-container">
 
+        <PlaybackMissionOverview
+          v-if="datasetStore.isPlaybackMode"
+          :cumulative-coverage="displayCumulativeCoverage"
+          :flown-distance="playbackMetrics.flownDistance"
+          :used-time-seconds="playbackMetrics.usedTimeSeconds"
+          :current-waypoint-index="datasetStore.playbackIndex"
+          :total-waypoints="datasetStore.parsedPoints.length"
+          :total-time-seconds="playbackMetrics.totalTimeSeconds"
+          :playback-speed="datasetStore.playbackSpeed"
+        />
         <MissionOverview
+          v-else
           :flight-data="flightData"
           :safety-status-class="safetyStatusClass"
-          @view-coverage="viewCoverage"
-          @view-overlap="viewOverlap"
-          @view-safety="viewSafety"
+          :show-all-coverage-highlight="showAllCoverageHighlight"
+          @view-coverage="handleViewCoverage"
         />
 
-        <!-- 航点详情面板 - 只在选中航点时显示 -->
-        <template v-if="selectedWaypointIndex !== null">
+        <!-- 航点详情面板 - 只在选中航点时显示，播放时隐藏 -->
+        <template v-if="!datasetStore.isPlaybackMode && selectedWaypointIndex !== null">
           <div class="section-divider"></div>
           <WaypointDetailGroup
             :waypoint="selectedWaypoint"
@@ -71,6 +83,7 @@ import { useDatasetStore } from '@/stores/dataset'
 import { useKpiStore } from '@/stores/kpi'
 import type { Object3D } from 'three'
 import MissionOverview from './MissionOverview.vue'
+import PlaybackMissionOverview from './PlaybackMissionOverview.vue'
 import WaypointDetailGroup from './WaypointDetailGroup.vue'
 import KPIHeader from './KPIHeader.vue'
 import CalculationStatus from './CalculationStatus.vue'
@@ -79,6 +92,7 @@ import { useWaypointSelection } from '../composables/useWaypointSelection'
 import { useWaypointDetails } from '../composables/useWaypointDetails'
 import { useKpiPlayback } from '../composables/useKpiPlayback'
 import { useFlightSummary } from '../composables/useFlightSummary'
+import { usePlaybackMetrics } from '../composables/usePlaybackMetrics'
 
 // 防抖函数
 function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
@@ -97,11 +111,20 @@ function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (..
 interface Props {
   buildingModel?: Object3D | null
   recalculateKpi?: () => Promise<void>
+  /** 播放时获取累计覆盖率（waypointCount=已飞过视点数），返回 % 或 null，与 KPI 同源 */
+  fetchPlaybackCoverage?: (waypointCount: number) => Promise<number | null>
+  /** 是否正在显示全视点覆盖高亮 */
+  showAllCoverageHighlight?: boolean
+  /** 点击 Play 时调用，若返回 Promise 则等待完成后再 startPlayback（用于预加载） */
+  onPlayRequest?: () => void | Promise<void>
 }
 
 const props = withDefaults(defineProps<Props>(), {
   buildingModel: null,
   recalculateKpi: undefined,
+  fetchPlaybackCoverage: undefined,
+  showAllCoverageHighlight: false,
+  onPlayRequest: undefined,
 })
 
 const datasetStore = useDatasetStore()
@@ -123,6 +146,23 @@ const { flightData, safetyStatusClass } = useFlightSummary(
   batteryCapacity,
 )
 
+const { playbackMetrics } = usePlaybackMetrics(
+  () => datasetStore.parsedPoints.map(p => ({ x: p.x, y: p.y, z: p.z, normal: p.normal, id: p.id })),
+  () => props.fetchPlaybackCoverage,
+)
+
+/** 播放到终点时用 KPI Coverage Rate，保证与 Mission Overview 一致 */
+const displayCumulativeCoverage = computed(() => {
+  const pts = datasetStore.parsedPoints
+  if (pts.length === 0) return playbackMetrics.value.cumulativeCoverage
+  const atEnd = Math.floor(datasetStore.playbackIndex) >= pts.length - 1
+  const kpiCoverage = kpiStore.kpiMetrics?.coverage
+  if (atEnd && kpiCoverage != null && Number.isFinite(kpiCoverage)) {
+    return kpiCoverage * 100
+  }
+  return playbackMetrics.value.cumulativeCoverage
+})
+
 const {
   selectedWaypoint,
   viewpointData,
@@ -142,15 +182,32 @@ const {
 )
 
 
-const {
-  handlePlay,
-  handlePause,
-  handleStop,
-  viewCoverage,
-  viewOverlap,
-  viewSafety,
-} = useKpiPlayback()
+const { viewCoverage } = useKpiPlayback()
 
+const emit = defineEmits<{
+  viewAllCoverage: []
+}>()
+
+const handleViewCoverage = () => {
+  viewCoverage()
+  emit('viewAllCoverage')
+}
+
+// 2. 重新定义播放控制函数，直接连接到 datasetStore
+const handlePlay = async () => {
+  if (props.onPlayRequest) {
+    await props.onPlayRequest()
+  }
+  datasetStore.startPlayback()
+}
+
+const handlePause = () => {
+  datasetStore.togglePause()
+}
+
+const handleStop = () => {
+  datasetStore.stopPlayback({ preserveIndex: true })
+}
 const updateFlightData = () => {
   // KPI 数据已由 useFlightSummary 自动计算，这里保留占位以便后续扩展
 }
@@ -210,7 +267,6 @@ watch(
   () => datasetStore.parsedPoints,
   debounce(() => {
     if (datasetStore.parsedPoints.length > 0 && props.recalculateKpi) {
-      console.log('Waypoints changed, recalculating KPI')
       // 使用 requestIdleCallback 或 setTimeout 确保计算不会阻塞 UI
       // 优先使用 requestIdleCallback，如果浏览器不支持则使用 setTimeout
       if (typeof requestIdleCallback !== 'undefined') {

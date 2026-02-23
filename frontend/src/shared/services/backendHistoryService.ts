@@ -6,16 +6,18 @@
  */
 
 export interface HistoryActionDTO {
-  type: 'updatePointPosition' | 'updatePointNormal'
+  type: 'updatePointPosition' | 'updatePointNormal' | 'addPoint' | 'deletePoint'
   pointId: number
   pointIndex: number
-  oldData?: {
+  oldData: {
     position?: { x: number; y: number; z: number }
     normal?: { x: number; y: number; z: number }
+    point?: { id: number; x: number; y: number; z: number; normal: { x: number; y: number; z: number } }
   }
-  newData?: {
+  newData: {
     position?: { x: number; y: number; z: number }
     normal?: { x: number; y: number; z: number }
+    point?: { id: number; x: number; y: number; z: number; normal: { x: number; y: number; z: number } }
   }
   timestamp: number
 }
@@ -58,33 +60,6 @@ export class BackendHistoryService {
     // 历史记录不保存到数据库，所以不需要从后端加载
     // 返回空数组表示没有历史记录
     return []
-  }
-
-  /**
-   * 删除项目的历史记录
-   */
-  static async deleteHistory(
-    projectId: string = this.DEFAULT_PROJECT_ID
-  ): Promise<void> {
-    if (!this.useBackend) {
-      return
-    }
-
-    try {
-      console.log('[后端历史] 删除历史记录...')
-
-      const response = await fetch(`${this.BASE_URL}/${projectId}/history`, {
-        method: 'DELETE',
-      })
-
-      if (!response.ok) {
-        throw new Error(`删除历史记录失败: ${response.statusText}`)
-      }
-
-      console.log('[后端历史] 历史记录删除成功')
-    } catch (error) {
-      console.warn('[后端历史] 删除失败:', error)
-    }
   }
 }
 

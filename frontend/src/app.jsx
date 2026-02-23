@@ -3,7 +3,7 @@
  */
 import { defineRuntimeConfig } from '@fesjs/fes'
 import Tres from '@tresjs/core'
-import { createPinia } from 'pinia'
+import { createPinia, setActivePinia } from 'pinia'
 import '@/styles/theme.css' // Global Theme
 
 export default defineRuntimeConfig({
@@ -11,10 +11,30 @@ export default defineRuntimeConfig({
 })
 
 export function onAppCreated({ app }) {
-    // 注册 TresJS
-    app.use(Tres)
-
     // 关键：注册 Pinia
     const pinia = createPinia()
     app.use(pinia)
+    // 强制设置活动 Pinia 实例，解决可能的多实例/上下文丢失问题
+    setActivePinia(pinia)
+
+    // 注册 TresJS
+    app.use(Tres)
+}
+
+/** Route guard: require login for protected pages */
+export function onRouterCreated({ router }) {
+    const publicPaths = ['/Login']
+    router.beforeEach(async (to, from, next) => {
+        const isPublic = publicPaths.includes(to.path)
+        const { useAuthStore } = await import('@/stores/auth')
+        const store = useAuthStore()
+        if (!isPublic && !store.isLoggedIn) {
+            next({ path: '/Login', query: { redirect: to.fullPath } })
+        } else if (to.path === '/Login' && store.isLoggedIn) {
+            const redirect = to.query.redirect
+            next({ path: (typeof redirect === 'string' ? redirect : '/Home') })
+        } else {
+            next()
+        }
+    })
 }

@@ -1,26 +1,31 @@
-# System
+# System - macOS
 .DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
+
+# System - Windows
 ehthumbs.db
 Thumbs.db
+Desktop.ini
 
 # Frontend - Node
 frontend/node_modules/
 frontend/dist/
+frontend/.cache/
+frontend/.env.local
+frontend/pnpm-lock.yaml
+frontend/package-lock.json
+frontend/yarn-error.log
+
+# Frontend - FesJS (generated)
 frontend/.fes/
 frontend/.fes-production/
 frontend/.fes-test/
-frontend/.env.local
-frontend/pnpm-lock.yaml
-frontend/yarn-error.log
-
-# Frontend - FesJS
-/src/.fes/
-/src/.fes-production/
-/src/.fes-test/
+frontend/src/.fes/
+frontend/src/.fes-production/
+frontend/src/.fes-test/
 
 # Backend - Java/Maven
 backend/target/
@@ -31,7 +36,7 @@ backend/.mvn/wrapper/
 backend/*.jar
 backend/*.war
 backend/*.ear
-backend/*.class
+**/*.class
 backend/.classpath
 backend/.project
 backend/.settings/
@@ -40,11 +45,13 @@ backend/*.iml
 backend/.vscode/
 backend/logs/
 
-# Environment
+# Environment & secrets (never commit)
 .env
 .env.local
 .env.prod
 .env.*.local
+*.pem
+*.key
 
 # IDE - VSCode
 .vscode/
@@ -71,16 +78,31 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
+hs_err_pid*.log
+*.hprof
 
-# Root level dependencies (should not exist, but just in case)
+# Root level
+package-lock.json
 node_modules/
 .cache/
+.pnp
+.pnp.js
+
+# Yarn
+frontend/.yarn/*
+!frontend/.yarn/patches
+!frontend/.yarn/plugins
+!frontend/.yarn/releases
+!frontend/.yarn/sdks
+!frontend/.yarn/versions
 
 # Temporary files
 *.swp
 *.swo
 *.tmp
 *~
+*.bak
+*.orig
 
 # Build artifacts
 dist/

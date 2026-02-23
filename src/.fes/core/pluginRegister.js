@@ -1,5 +1,5 @@
 import { plugin } from './plugin';
-import * as Plugin_0 from 'D:/GRP_program/grp-skypath/frontend/src/app.jsx';
+import * as Plugin_0 from 'C:/Users/34175/grp-skypath/src/app.jsx';
 import * as Plugin_1 from '@@/core/routes/runtime.js';
 
 function handleDefaultExport(pluginExports) {
@@ -17,7 +17,7 @@ function handleDefaultExport(pluginExports) {
 
   plugin.register({
     apply: handleDefaultExport(Plugin_0),
-    path: 'D:/GRP_program/grp-skypath/frontend/src/app.jsx',
+    path: 'C:/Users/34175/grp-skypath/src/app.jsx',
   });
   plugin.register({
     apply: handleDefaultExport(Plugin_1),

@@ -80,7 +80,7 @@ public class FrustumHighlightService {
 
         long calculationTime = System.currentTimeMillis() - startTime;
 
-        log.info("视锥体高亮计算完成: {}/{} 面可见, 覆盖率: {}%, 耗时: {}ms",
+        log.info("Frustum highlight complete: {}/{} faces visible, coverage: {}%, elapsed: {}ms",
             visibleFaces.size(), totalFaces, String.format("%.2f", coverage * 100), calculationTime);
 
         HighlightResult result = new HighlightResult();
@@ -101,7 +101,7 @@ public class FrustumHighlightService {
             List<ViewpointRequest> viewpoints,
             MeshData buildingMesh) {
 
-        log.info("开始预计算 {} 个视点的可见面...", viewpoints.size());
+        log.info("Precomputing visible faces for {} viewpoints...", viewpoints.size());
 
         Map<Integer, HighlightResult> results = new HashMap<>();
 
@@ -110,11 +110,11 @@ public class FrustumHighlightService {
                 HighlightResult result = calculateVisibleFaces(viewpoints.get(i), buildingMesh);
                 results.put(i, result);
             } catch (Exception e) {
-                log.error("计算视点 {} 失败", i, e);
+                log.error("Failed to compute viewpoint {}", i, e);
             }
         }
 
-        log.info("预计算完成, 成功: {}/{}", results.size(), viewpoints.size());
+        log.info("Precompute complete, success: {}/{}", results.size(), viewpoints.size());
 
         return results;
     }

@@ -33,7 +33,6 @@ export function useModelLoader() {
    * 使用后端API加载OBJ模型
    */
   const loadObjModelFromBackend = async (file: File, projectId: string = '1'): Promise<Object3D> => {
-    console.log('[后端模式] 开始加载OBJ模型...')
 
     // 上传文件到后端并获取优化数据
     const modelData = await BackendModelService.uploadOBJ(file, projectId)
@@ -42,7 +41,6 @@ export function useModelLoader() {
     const model = BackendModelService.createObjectFromData(modelData)
 
     buildingModel.value = markRaw(model)
-    console.log('[后端模式] 建筑模型加载完成')
 
     return model
   }
@@ -51,7 +49,6 @@ export function useModelLoader() {
    * 使用前端本地解析加载OBJ模型
    */
   const loadObjModelLocal = async (file: File): Promise<Object3D> => {
-    console.log('[本地模式] 开始加载OBJ模型...')
 
     try {
       // 读取并解析 OBJ 文本
@@ -72,7 +69,6 @@ export function useModelLoader() {
       })
       URL.revokeObjectURL(objURL)
 
-      console.log('[本地模式] OBJ 模型解析完成，开始处理网格法线与材质...')
 
       // 处理模型材质和法线
       let meshCount = 0
@@ -122,19 +118,8 @@ export function useModelLoader() {
         }
       })
 
-      console.log(`[本地模式] OBJ 解析统计 -> Mesh: ${meshCount}, Line/LineSegments: ${lineCount}`)
-
-      // 计算模型的边界框
-      const box = new THREE.Box3().setFromObject(model)
-      const size = box.getSize(new THREE.Vector3())
-      console.log('[本地模式] 模型尺寸:', {
-        x: size.x.toFixed(2),
-        y: size.y.toFixed(2),
-        z: size.z.toFixed(2),
-      })
 
       buildingModel.value = markRaw(model)
-      console.log('[本地模式] 建筑模型加载完成')
 
       return model
     } catch (err) {
@@ -177,13 +162,10 @@ export function useModelLoader() {
    */
   const loadModelFromBackend = async (projectId: string = '1'): Promise<Object3D | null> => {
     try {
-      console.log('[后端模式] 从后端加载已保存的模型数据...')
-
       const modelData = await BackendModelService.loadModelData(projectId)
       const model = BackendModelService.createObjectFromData(modelData)
 
       buildingModel.value = markRaw(model)
-      console.log('[后端模式] 建筑模型加载完成')
 
       return model
     } catch (err) {

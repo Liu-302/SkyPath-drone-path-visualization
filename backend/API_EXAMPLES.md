@@ -5,11 +5,11 @@
 http://localhost:8080
 ```
 
-## User Operations
+## Auth Operations
 
-### Create a new user
+### Register
 ```bash
-curl -X POST http://localhost:8080/api/users \
+curl -X POST http://localhost:8080/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "username": "john_doe",
@@ -18,25 +18,26 @@ curl -X POST http://localhost:8080/api/users \
   }'
 ```
 
-### Get all users
+### Login
 ```bash
-curl http://localhost:8080/api/users
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john@example.com",
+    "password": "securePassword123"
+  }'
 ```
-
-### Get user by ID
-```bash
-curl http://localhost:8080/api/users/{userId}
-```
+返回 `token` 和 `userId`，后续请求需在 Header 中携带 `Authorization: Bearer {token}`。
 
 ## Project Operations
 
-### Create a new project
+### Create a new project（需登录）
 ```bash
 curl -X POST http://localhost:8080/api/projects \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {token}" \
   -d '{
     "name": "My 3D Building Project",
-    "description": "A sample project for building visualization",
     "userId": "{userId}"
   }'
 ```

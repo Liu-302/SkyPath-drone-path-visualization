@@ -14,7 +14,7 @@ export default defineBuildConfig({
   publicPath: './',
 
   router: {
-    mode: 'hash',
+    mode: 'history',
   },
 
   viteVuePlugin: {

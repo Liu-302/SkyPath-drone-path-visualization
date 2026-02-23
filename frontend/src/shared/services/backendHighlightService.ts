@@ -48,8 +48,6 @@ export class BackendHighlightService {
     }
 
     try {
-      console.log('[后端高亮] 计算视锥体可见面...', viewpoint)
-
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), BACKEND_CONFIG.TIMEOUT)
 
@@ -63,18 +61,10 @@ export class BackendHighlightService {
       clearTimeout(timeoutId)
 
       if (!response.ok) {
-        throw new Error(`后端高亮失败: ${response.statusText}`)
+        throw new Error(`Backend highlight failed: ${response.statusText}`)
       }
 
       const result = await response.json()
-
-      console.log('[后端高亮] 计算完成:', {
-        可见面: result.visibleFaceCount,
-        总面数: result.totalFaceCount,
-        覆盖率: `${(result.coverage * 100).toFixed(2)}%`,
-        耗时: `${result.calculationTime}ms`,
-      })
-
       return result
     } catch (error: any) {
       // 只在首次失败时打印详细错误，后续静默降级

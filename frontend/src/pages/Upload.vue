@@ -1,12 +1,17 @@
 <template>
   <div class="page-wrap">
-    <!-- 粒子背景 -->
     <ParticleBackground />
     
     <div class="center-container">
       <div class="panel">
         <header class="panel-header">
-          <h1>Upload Files</h1>
+          <div class="header-row">
+            <h1>Upload Files</h1>
+            <div class="user-area">
+              <span v-if="authStore.user" class="user-name">{{ authStore.user.username }}</span>
+              <button class="btn-text" @click="handleLogout">Logout</button>
+            </div>
+          </div>
         </header>
 
         <!-- ================= 模型上传区 ================= -->
@@ -48,9 +53,11 @@
 
         <!-- ================= 操作区 ================= -->
         <footer class="footer">
-          <div style="flex: 1;"></div>
           <div style="display: flex; gap: 12px;">
+            <button class="btn" @click="goHome">Home</button>
             <button class="btn" @click="resetAll">Reset All</button>
+          </div>
+          <div style="display: flex; gap: 12px;">
             <button class="btn primary" :disabled="!canVisualize" @click="goVisualize">
               Start Visualization
             </button>
@@ -76,6 +83,7 @@
 import { computed } from 'vue'
 import { useRouter } from '@fesjs/fes'
 import { useDatasetStore } from '@/stores/dataset'
+import { useAuthStore } from '@/stores/auth'
 import ConfirmDialog from '@/features/shared/components/ConfirmDialog.vue'
 import ParticleBackground from '@/features/upload/components/ParticleBackground.vue'
 import FileUploadZone from '@/features/upload/components/FileUploadZone.vue'
@@ -85,6 +93,12 @@ import { usePathParser } from '@/features/visualization/services/path-parser.ser
 
 const router = useRouter()
 const store = useDatasetStore()
+const authStore = useAuthStore()
+
+function handleLogout() {
+  authStore.logout()
+  router.replace('/Login')
+}
 
 const { dialogVisible, dialogMessage, showConfirmDialog, handleConfirm: handleDialogConfirm, handleCancel: handleDialogCancel } = useConfirmDialog()
 const { parsePathFile } = usePathParser()
@@ -136,15 +150,18 @@ const okMsg = computed(() => modelOk.value || pathOk.value)
 
 // ====================== 操作区 ======================
 function resetAll() {
-  console.log(`[操作] 重置所有文件与状态`)
   store.resetAll()
   modelUpload.clearMessages()
   pathUpload.clearMessages()
 }
 
+function goHome() {
+  store.resetAll()
+  router.replace('/Home')
+}
+
 function goVisualize() {
-  console.log(`[操作] 进入可视化页面`)
-  router.push('/visualize')
+  router.push('/Visualize')
 }
 </script>
 
@@ -202,9 +219,42 @@ function goVisualize() {
 }
 
 .panel-header {
-  text-align: center;
   position: relative;
   margin-bottom: -16px;
+}
+
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.user-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-name {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.btn-text {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  transition: color 0.2s, background 0.2s;
+}
+
+.btn-text:hover {
+  color: var(--text-primary);
+  background: var(--glass-bg-hover);
 }
 
 .panel-header h1 { 

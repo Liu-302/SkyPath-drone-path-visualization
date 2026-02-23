@@ -20,16 +20,16 @@
       </div>
       <div class="info-item">
         <span class="info-label">Coverage Rate</span>
-        <span class="info-value">{{ flightData.coverageRate }}% <a href="#" class="info-link info-link-percentage" @click.prevent="viewCoverage">[View]</a></span>
+        <span class="info-value">{{ flightData.coverageRate }}% <a href="#" class="info-link info-link-percentage" @click.prevent="viewCoverage">{{ showAllCoverageHighlight ? '[Hide]' : '[View]' }}</a></span>
       </div>
       <div class="info-item">
         <span class="info-label">Overlap Rate</span>
-        <span class="info-value">{{ flightData.overlapRate }}% <a href="#" class="info-link info-link-percentage" @click.prevent="viewOverlap">[View]</a></span>
+        <span class="info-value">{{ flightData.overlapRate }}%</span>
       </div>
       <div class="info-item">
         <span class="info-label">Safety Status</span>
         <span class="info-value status-warning" :class="safetyStatusClass">
-          {{ flightData.safetyStatus }} <a href="#" class="info-link" @click.prevent="viewSafety">[View]</a>
+          {{ flightData.safetyStatus }}
         </span>
       </div>
     </div>
@@ -48,26 +48,19 @@ interface Props {
     safetyStatus: string
   }
   safetyStatusClass: string
+  showAllCoverageHighlight?: boolean
 }
 
-defineProps<Props>()
+withDefaults(defineProps<Props>(), {
+  showAllCoverageHighlight: false,
+})
 
 const emit = defineEmits<{
   viewCoverage: []
-  viewOverlap: []
-  viewSafety: []
 }>()
 
 const viewCoverage = () => {
   emit('viewCoverage')
-}
-
-const viewOverlap = () => {
-  emit('viewOverlap')
-}
-
-const viewSafety = () => {
-  emit('viewSafety')
 }
 </script>
 
@@ -140,11 +133,11 @@ const viewSafety = () => {
   align-items: center;
   white-space: nowrap;
   flex-shrink: 0;
-  transform: translateY(0.1em);
+  transform: translateY(-0.05em);
 }
 
 .info-link-percentage {
-  transform: translateY(-0.1em);
+  transform: translateY(-0.05em);
 }
 
 .info-link:hover {

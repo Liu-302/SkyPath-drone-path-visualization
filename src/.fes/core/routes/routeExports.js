@@ -1,5 +1,5 @@
 import { createApp } from 'vue';
-import { createRouter as createVueRouter, createWebHashHistory, ApplyPluginsType } from 'D:/GRP_program/grp-skypath/frontend/node_modules/@fesjs/runtime';
+import { createRouter as createVueRouter, createWebHashHistory, ApplyPluginsType } from 'C:/Users/34175/grp-skypath/node_modules/@fesjs/runtime';
 import { plugin } from '../plugin';
 import { updateInitialState } from '../../initialState';
 

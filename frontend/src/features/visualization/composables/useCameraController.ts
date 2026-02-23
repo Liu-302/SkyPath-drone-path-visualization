@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import * as THREE from 'three'
 import type { Object3D } from 'three'
+import { animate } from '@/shared/utils/tween'
 
 /**
  * 相机控制器 Composable
@@ -33,7 +34,8 @@ export function useCameraController() {
   const adjustCamera = (
     buildingModel: Object3D | null,
     pathPoints: Array<{ x: number; y: number; z: number }>,
-    controlsRef?: any
+    controlsRef?: any,
+    cameraRef?: any
   ) => {
     // console.log('调整相机位置...')
 
@@ -44,12 +46,6 @@ export function useCameraController() {
     if (buildingModel) {
       const modelBox = new THREE.Box3().setFromObject(buildingModel)
       sceneBounds.union(modelBox)
-      if (import.meta.env.DEV && false) {
-        console.log('建筑模型边界:', {
-          min: `(${modelBox.min.x.toFixed(2)}, ${modelBox.min.y.toFixed(2)}, ${modelBox.min.z.toFixed(2)})`,
-          max: `(${modelBox.max.x.toFixed(2)}, ${modelBox.max.y.toFixed(2)}, ${modelBox.max.z.toFixed(2)})`
-        })
-      }
     }
 
     // 包含路径点的边界
@@ -59,17 +55,10 @@ export function useCameraController() {
         pathBounds.expandByPoint(new THREE.Vector3(p.x, p.y, p.z))
       })
       sceneBounds.union(pathBounds)
-      if (import.meta.env.DEV && false) {
-        console.log('路径点边界:', {
-          min: `(${pathBounds.min.x.toFixed(2)}, ${pathBounds.min.y.toFixed(2)}, ${pathBounds.min.z.toFixed(2)})`,
-          max: `(${pathBounds.max.x.toFixed(2)}, ${pathBounds.max.y.toFixed(2)}, ${pathBounds.max.z.toFixed(2)})`
-        })
-      }
     }
 
     // 如果没有边界数据，使用默认值
     if (sceneBounds.isEmpty()) {
-      console.log('没有场景边界数据，使用默认相机位置')
       cameraPosition.value = [100, 100, 100]
       return
     }
@@ -79,28 +68,63 @@ export function useCameraController() {
     const maxDim = Math.max(size.x, size.y, size.z)
 
     // 增加距离确保能看到整个场景
-    const dist = maxDim * 0.5
+    const dist = maxDim * 0.6
 
-    if (import.meta.env.DEV && false) {
-      console.log('场景整体信息:')
-      console.log('  中心:', center.x.toFixed(2), center.y.toFixed(2), center.z.toFixed(2))
-      console.log('  尺寸:', size.x.toFixed(2), size.y.toFixed(2), size.z.toFixed(2))
-      console.log('  最大维度:', maxDim.toFixed(2))
-      console.log('  相机距离:', dist.toFixed(2))
+    // 相机方向：从目标指向相机，即 -direction（direction 为相机看向目标的方向）
+    // 用户选定值：direction=(-0.47,-0.20,0.86) => 相机在 (0.47, 0.20, -0.86) 方向
+    const dir = new THREE.Vector3(0.47, 0.20, -0.86).normalize()
+    const targetPos = [
+      center.x + dir.x * dist,
+      center.y + dir.y * dist,
+      center.z + dir.z * dist
+    ]
+    const targetFocus = [center.x, center.y, center.z]
+
+
+    // 检查是否有 controlsRef
+    // 在 Visualize.vue 中，controlsRef 是一个 Ref<OrbitControlsInstance | null>
+    // TresJS 的这一块比较混乱，有时需要多层解包
+    const ctrl = controlsRef && (controlsRef.target ? controlsRef : (controlsRef.value?.value || controlsRef.value))
+    const cam = cameraRef && (cameraRef.isCamera ? cameraRef : (cameraRef.value?.value || cameraRef.value))
+
+    if (ctrl) {
+      // 动画过渡
+      // 优先从真实相机对象获取当前位置，否则使用 stored ref
+      const currentPos = cam ? [cam.position.x, cam.position.y, cam.position.z] : cameraPosition.value
+      const startPos = [currentPos[0], currentPos[1], currentPos[2]]
+      
+      // OrbitControls target 可能是 Vector3 也可能是 {x,y,z}
+      const currentTx = ctrl.target?.x ?? 0
+      const currentTy = ctrl.target?.y ?? 0
+      const currentTz = ctrl.target?.z ?? 0
+      const startFocus = [currentTx, currentTy, currentTz]
+
+      // 确保目标值为数字
+      const safeTargetPos = targetPos.map(n => Number(n) || 0)
+      const safeTargetFocus = targetFocus.map(n => Number(n) || 0)
+
+      animate(startPos, safeTargetPos, 1000, (val) => {
+        // 更新响应式变量 (TresJS prop)
+        cameraPosition.value = [val[0], val[1], val[2]]
+        // 如果有相机对象，也直接更新它以便更丝滑 (TresJS绑定有时有延迟)
+        if (cam) {
+            cam.position.set(val[0], val[1], val[2])
+            // cam.updateMatrixWorld() // 有时需要手动更新矩阵
+        }
+      })
+
+      animate(startFocus, safeTargetFocus, 1000, (val) => {
+        if (ctrl.target) {
+            ctrl.target.set(val[0], val[1], val[2])
+            ctrl.update()
+        }
+      })
+    } else {
+      console.warn('[AdjustCamera] No controls found, snapping.')
+      // 无控制器时直接跳转
+      cameraPosition.value = [targetPos[0], targetPos[1], targetPos[2]]
+      if (cam) cam.position.set(targetPos[0], targetPos[1], targetPos[2])
     }
-
-    cameraPosition.value = [center.x + dist, center.y + dist, center.z + dist]
-
-    // 更新相机控制器目标
-    // 注意：TresJS 的 ref 结构可能是嵌套的 controlsRef.value?.value
-    setTimeout(() => {
-      const ctrl = controlsRef?.value?.value || controlsRef?.value
-      if (ctrl && ctrl.target) {
-        ctrl.target.set(center.x, center.y, center.z)
-        ctrl.update()
-        // console.log('相机已调整到场景中心')
-      }
-    }, 200)
   }
 
   return {

@@ -52,29 +52,48 @@ export function useFileUpload(
       if (confirmed) {
         // 替换文件
         if (fileType === 'model') {
-          console.log(`[模型] 已替换: ${currentFile} → ${newFile.name}`)
           store.removeModelFile(currentFile)
           store.addModelFiles([newFile])
         } else {
-          console.log(`[路径] 已替换: ${currentFile} → ${newFile.name}`)
           store.removePathFile(currentFile)
           store.addPathFiles([newFile])
         }
         okMsg.value = ''
-        await options?.onAfterAdd?.(newFile)
+        try {
+          await options?.onAfterAdd?.(newFile)
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          errorMsg.value = msg
+          if (fileType === 'path') {
+            store.removePathFile(newFile.name)
+            store.setParsedPoints([])
+          } else {
+            store.removeModelFile(newFile.name)
+          }
+          return
+        }
       } else {
-        return // 用户取消替换
+        return
       }
     } else {
-      // 没有文件，直接添加
       if (fileType === 'model') {
-        console.log(`[模型] 已导入: ${newFile.name} (${(newFile.size / 1024).toFixed(2)} KB)`)
         store.addModelFiles([newFile])
       } else {
-        console.log(`[路径] 已导入: ${newFile.name} (${(newFile.size / 1024).toFixed(2)} KB)`)
         store.addPathFiles([newFile])
       }
-      await options?.onAfterAdd?.(newFile)
+      try {
+        await options?.onAfterAdd?.(newFile)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        errorMsg.value = msg
+        if (fileType === 'path') {
+          store.removePathFile(newFile.name)
+          store.setParsedPoints([])
+        } else {
+          store.removeModelFile(newFile.name)
+        }
+        return
+      }
     }
   }
 
@@ -105,30 +124,51 @@ export function useFileUpload(
       if (confirmed) {
         // 替换文件
         if (fileType === 'model') {
-          console.log(`[模型] 已替换: ${currentFile} → ${newFile.name}`)
           store.removeModelFile(currentFile)
           store.addModelFiles([newFile])
         } else {
-          console.log(`[路径] 已替换: ${currentFile} → ${newFile.name}`)
           store.removePathFile(currentFile)
           store.addPathFiles([newFile])
         }
         okMsg.value = ''
-        await options?.onAfterAdd?.(newFile)
+        try {
+          await options?.onAfterAdd?.(newFile)
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          errorMsg.value = msg
+          if (fileType === 'path') {
+            store.removePathFile(newFile.name)
+            store.setParsedPoints([])
+          } else {
+            store.removeModelFile(newFile.name)
+          }
+          isDrag.value = false
+          return
+        }
       } else {
         isDrag.value = false
-        return // 用户取消替换
+        return
       }
     } else {
-      // 没有文件，直接添加
       if (fileType === 'model') {
-        console.log(`[模型] 已导入: ${newFile.name} (${(newFile.size / 1024).toFixed(2)} KB)`)
         store.addModelFiles([newFile])
       } else {
-        console.log(`[路径] 已导入: ${newFile.name} (${(newFile.size / 1024).toFixed(2)} KB)`)
         store.addPathFiles([newFile])
       }
-      await options?.onAfterAdd?.(newFile)
+      try {
+        await options?.onAfterAdd?.(newFile)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        errorMsg.value = msg
+        if (fileType === 'path') {
+          store.removePathFile(newFile.name)
+          store.setParsedPoints([])
+        } else {
+          store.removeModelFile(newFile.name)
+        }
+        isDrag.value = false
+        return
+      }
     }
 
     isDrag.value = false

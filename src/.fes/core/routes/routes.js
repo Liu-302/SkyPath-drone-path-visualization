@@ -1,8 +1,8 @@
 
 
-import upload from 'D:/GRP_program/grp-skypath/frontend/src/pages/Upload.vue'
-import visualize from 'D:/GRP_program/grp-skypath/frontend/src/pages/Visualize.vue'
-import index from 'D:/GRP_program/grp-skypath/frontend/src/pages/index.vue'
+import upload from 'C:/Users/34175/grp-skypath/src/pages/Upload.vue'
+import visualize from 'C:/Users/34175/grp-skypath/src/pages/Visualize.vue'
+import index from 'C:/Users/34175/grp-skypath/src/pages/index.vue'
 
 export function getRoutes() {
   const routes = [

@@ -5,17 +5,15 @@
 
 // 从环境变量获取后端URL，如果没有则使用默认值
 const getBackendUrl = (): string => {
-  // 优先使用环境变量
+  // 优先使用环境变量（生产部署必须设置 VITE_BACKEND_URL）
   if (import.meta.env.VITE_BACKEND_URL) {
     return import.meta.env.VITE_BACKEND_URL
   }
-  
   // 开发环境默认值
   if (import.meta.env.DEV) {
     return 'http://localhost:8080'
   }
-  
-  // 生产环境默认值（可以根据实际情况修改）
+  // 生产环境：未设置 VITE_BACKEND_URL 时回退到 localhost（部署时请务必配置）
   return 'http://localhost:8080'
 }
 
@@ -63,15 +61,6 @@ export const BACKEND_CONFIG = {
       return false
     }
   },
-}
-
-// 在开发环境下打印配置信息
-if (import.meta.env.DEV) {
-  console.log('[后端配置]', {
-    BASE_URL: BACKEND_CONFIG.BASE_URL,
-    API_BASE_URL: BACKEND_CONFIG.API_BASE_URL,
-    ENABLED: BACKEND_CONFIG.ENABLED,
-  })
 }
 
 export default BACKEND_CONFIG

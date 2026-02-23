@@ -14,6 +14,7 @@
               pattern="-?\d*\.?\d*"
               step="0.1"
               :class="['coordinate-input', { 'invalid': !isPitchValid }]"
+              aria-label="Pitch angle in degrees (-90 to 90)"
               @blur="updateCameraAngle"
               @keydown.enter="($event.target as HTMLInputElement).blur()"
               @keydown="handleNumberInput"
@@ -30,6 +31,7 @@
               pattern="-?\d*\.?\d*"
               step="0.1"
               :class="['coordinate-input', { 'invalid': !isYawValid }]"
+              aria-label="Yaw angle in degrees (0 to 360)"
               @blur="updateCameraAngle"
               @keydown.enter="($event.target as HTMLInputElement).blur()"
               @keydown="handleNumberInput"
@@ -41,7 +43,10 @@
       </div>
       <div class="data-row">
         <span class="data-label">Overlap with Previous Frame</span>
-        <span class="data-value">{{ viewpointData.overlap !== null ? viewpointData.overlap.toFixed(1) : 'N/A' }} %</span>
+        <span class="data-value">
+          <template v-if="overlapLoading">Loading...</template>
+          <template v-else>{{ displayedOverlap !== null ? displayedOverlap.toFixed(1) : 'N/A' }} %</template>
+        </span>
       </div>
     </div>
   </div>
@@ -52,6 +57,7 @@ import { ref, watch, onMounted, computed } from 'vue'
 import { Viewpoint } from '../types/kpi'
 import { useDatasetStore } from '@/stores/dataset'
 import { calculateNormalFromAngle } from '@/shared/utils/coordinate-converter'
+import { BACKEND_CONFIG } from '@/shared/config/backend.config'
 
 interface Props {
   viewpointData: Viewpoint
@@ -60,6 +66,16 @@ interface Props {
 
 const props = defineProps<Props>()
 const store = useDatasetStore()
+
+// 后端返回的 overlap（与整体KPI口径一致）
+const backendOverlap = ref<number | null>(null)
+const overlapLoading = ref(false)
+
+const displayedOverlap = computed(() => {
+  // 优先使用后端结果；后端不可用/未返回时回退到 props（兼容旧逻辑）
+  if (backendOverlap.value !== null) return backendOverlap.value
+  return props.viewpointData.overlap
+})
 
 // 可编辑的相机角度值
 const editablePitch = ref(0)
@@ -83,15 +99,98 @@ onMounted(() => {
   editableYaw.value = Number(props.viewpointData.yaw)
 })
 
-// 监听props变化，更新编辑值（不在编辑状态时才更新）
-watch(() => props.viewpointData, (newViewpoint) => {
-  if (ignoreNextUpdate.value) {
-    ignoreNextUpdate.value = false
+async function fetchBackendViewpointOverlap() {
+  // index 0 没有上一帧，直接显示 N/A
+  if (props.viewpointIndex === 0) {
+    backendOverlap.value = null
+    overlapLoading.value = false
     return
   }
-  editablePitch.value = Number(newViewpoint.pitch)
-  editableYaw.value = Number(newViewpoint.yaw)
-}, { deep: true })
+
+  overlapLoading.value = true
+  // 准备 pathPoints（与 Visualize.vue /kpi 一致）
+  const pathPoints = store.parsedPoints.map((point) => {
+    let normal = { x: 0, y: -1, z: 0 }
+    if (point.normal && typeof point.normal === 'object') {
+      const normalVec = {
+        x: point.normal.x ?? 0,
+        y: point.normal.y ?? 0,
+        z: point.normal.z ?? 0,
+      }
+      const normalLength = Math.sqrt(normalVec.x * normalVec.x + normalVec.y * normalVec.y + normalVec.z * normalVec.z)
+      if (normalLength > 0.001) {
+        normal = {
+          x: normalVec.x / normalLength,
+          y: normalVec.y / normalLength,
+          z: normalVec.z / normalLength,
+        }
+      }
+    }
+    return {
+      x: point.x,
+      y: point.y,
+      z: point.z,
+      normalX: normal.x,
+      normalY: normal.y,
+      normalZ: normal.z,
+    }
+  })
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), BACKEND_CONFIG.TIMEOUT)
+
+  try {
+    const response = await fetch(`${BACKEND_CONFIG.BASE_URL}/api/projects/${BACKEND_CONFIG.DEFAULT_PROJECT_ID}/viewpoint-metrics`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        index: props.viewpointIndex,
+        pathPoints,
+        // buildingMesh 省略，依赖后端缓存/数据库（与 /kpi 一致）
+        buildingMesh: null,
+      }),
+      signal: controller.signal,
+    })
+
+    if (!response.ok) {
+      backendOverlap.value = null
+      return
+    }
+
+    const result = await response.json()
+    // 后端字段名：overlapWithPrevious
+    const overlap = result?.overlapWithPrevious
+    backendOverlap.value = typeof overlap === 'number' ? overlap : null
+  } catch {
+    backendOverlap.value = null
+  } finally {
+    clearTimeout(timeoutId)
+    overlapLoading.value = false
+  }
+}
+
+// 选中航点切换时，拉取后端 overlap
+watch(
+  () => props.viewpointIndex,
+  () => {
+    fetchBackendViewpointOverlap()
+  },
+  { immediate: true }
+)
+
+// 监听 props 的 pitch/yaw 数值变化并同步到输入框（撤销/重做后能正确刷新）
+watch(
+  () => [Number(props.viewpointData.pitch), Number(props.viewpointData.yaw)] as [number, number],
+  ([newPitch, newYaw]) => {
+    if (ignoreNextUpdate.value) {
+      ignoreNextUpdate.value = false
+      // 若新值与当前一致，说明是本次提交触发的更新，已跳过；否则为撤销/重做，必须同步
+      if (newPitch === editablePitch.value && newYaw === editableYaw.value) return
+    }
+    editablePitch.value = newPitch
+    editableYaw.value = newYaw
+  }
+)
 
 // 处理wheel事件，在输入框聚焦时阻止默认滚动行为
 const handleWheel = (event: WheelEvent) => {
@@ -170,6 +269,9 @@ const updateCameraAngle = () => {
 
   const normal = calculateNormalFromAngle(pitch, yaw, roll)
   store.updatePointNormal(point.id, normal)
+
+  // normal 变化后同步刷新后端 overlap（避免与整体KPI口径不一致）
+  fetchBackendViewpointOverlap()
 }
 </script>
 
