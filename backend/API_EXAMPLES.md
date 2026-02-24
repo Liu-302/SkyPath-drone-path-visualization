@@ -12,9 +12,9 @@ http://localhost:8080
 curl -X POST http://localhost:8080/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "username": "john_doe",
-    "email": "john@example.com",
-    "password": "securePassword123"
+    "username": "your_username",
+    "email": "your_email@example.com",
+    "password": "your_password_min_6_chars"
   }'
 ```
 
@@ -23,10 +23,11 @@ curl -X POST http://localhost:8080/api/auth/register \
 curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "john@example.com",
-    "password": "securePassword123"
+    "email": "your_email@example.com",
+    "password": "your_password_min_6_chars"
   }'
 ```
+（示例仅用占位符，请勿提交真实邮箱或密码到仓库。）
 返回 `token` 和 `userId`，后续请求需在 Header 中携带 `Authorization: Bearer {token}`。
 
 ## Project Operations
